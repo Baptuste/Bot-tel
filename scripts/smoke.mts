@@ -122,6 +122,22 @@ async function main() {
   check('POST tournee', route.status === 201);
   const routeId = route.json.route.id;
 
+  // --- Livreurs (sous-module drivers) ---
+  const drv = await call('POST', '/api/drivers', { name: 'SMOKE livreur', phone: '06 55 55 55 55' });
+  check('POST livreur', drv.status === 201 && drv.json.driver.active === true);
+  const driverId = drv.json.driver.id;
+  check('POST livreur vide -> 400', (await call('POST', '/api/drivers', { name: '' })).status === 400);
+  check('  drivers sans auth -> 401', (await fetch(`${BASE}/api/drivers`)).status === 401);
+  const setDrv = await call('POST', `/api/routes/${routeId}/driver`, { driver_id: driverId });
+  check('affecter livreur a la tournee', setDrv.status === 200 && setDrv.json.route.driver?.id === driverId);
+  check('  tournee expose le livreur dans la liste',
+    (await call('GET', '/api/routes')).json.routes.find((r: any) => r.id === routeId)?.driver?.name === 'SMOKE livreur');
+  check('modele accepte un livreur par defaut',
+    (await call('PATCH', `/api/routes/templates/${tpl.json.template.id}`, { driver_id: driverId })).json.template.driver_id === driverId);
+  check('retirer le livreur (driver_id null)',
+    (await call('POST', `/api/routes/${routeId}/driver`, { driver_id: null })).json.route.driver === null);
+  check('PATCH livreur inactif', (await call('PATCH', `/api/drivers/${driverId}`, { active: false })).json.driver.active === false);
+
   // --- Flux commande complet (envoie de vrais messages au client) ---
   const order = (u: number) =>
     createOrder({
@@ -241,6 +257,7 @@ async function main() {
   db.prepare('DELETE FROM customers WHERE user_id = ?').run(SMOKE_USER);
   await call('DELETE', `/api/routes/${routeId}`);
   await call('DELETE', `/api/routes/templates/${tpl.json.template.id}`);
+  await call('DELETE', `/api/drivers/${driverId}`);
   await call('DELETE', `/api/catalog/categories/${catId}`); // cascade produit + variante
   check('image supprimee avec le produit', !existsSync(`${UPLOADS_DIR}/${imgFile}`));
 

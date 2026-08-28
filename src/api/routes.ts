@@ -15,12 +15,21 @@ import {
   finishRoute,
   moveOrder,
   routesOverview,
+  setRouteDriver,
   startRoute,
   unassignOrder,
   updateTemplate,
   type RouteTemplate,
 } from '../routes';
 import { requireAdmin } from './auth';
+
+/** null (retirer), un id de livreur, ou undefined (champ absent -> ne pas toucher). */
+function parseDriverId(value: unknown): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -49,7 +58,12 @@ export function routesRouter(telegram: Telegram): Router {
       return;
     }
     res.status(201).json({
-      template: createTemplate({ label, time, max_capacity: parseCapacity(req.body?.max_capacity) }),
+      template: createTemplate({
+        label,
+        time,
+        max_capacity: parseCapacity(req.body?.max_capacity),
+        driver_id: parseDriverId(req.body?.driver_id) ?? null,
+      }),
     });
   });
 
@@ -67,6 +81,8 @@ export function routesRouter(telegram: Telegram): Router {
     if (req.body?.active !== undefined) patch.active = Boolean(req.body.active);
     if (req.body?.max_capacity !== undefined) patch.max_capacity = parseCapacity(req.body.max_capacity);
     if (req.body?.position !== undefined) patch.position = Number(req.body.position);
+    const driverId = parseDriverId(req.body?.driver_id);
+    if (driverId !== undefined) patch.driver_id = driverId;
 
     const template = updateTemplate(Number(req.params.id), patch);
     if (!template) {
@@ -87,7 +103,19 @@ export function routesRouter(telegram: Telegram): Router {
       res.status(400).json({ error: 'invalid_route' });
       return;
     }
-    res.status(201).json({ route: createRoute(date, timeSlot) });
+    res.status(201).json({
+      route: createRoute(date, timeSlot, parseDriverId(req.body?.driver_id) ?? null),
+    });
+  });
+
+  // Affecte / retire le livreur d'une tournee.
+  router.post('/:id/driver', (req, res) => {
+    const route = setRouteDriver(Number(req.params.id), parseDriverId(req.body?.driver_id) ?? null);
+    if (!route) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    res.json({ route });
   });
 
   router.post('/:id/assign', (req, res) => {

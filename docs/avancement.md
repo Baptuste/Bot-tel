@@ -4,7 +4,7 @@
 Pour le "pourquoi" des choix : [`cadrage.md`](./cadrage.md) (cadrage initial) et
 [`coeur-et-modules.md`](./coeur-et-modules.md) (direction : cœur générique + modules).
 
-> Dernière mise à jour : 2026-08-28, modularisation terminée (6 étapes, voir plus bas).
+> Dernière mise à jour : 2026-08-28, brique 17 (multi-livreurs).
 
 **Modularisation « cœur + modules » : terminée** (6 étapes, section dédiée plus
 bas) — voir [`coeur-et-modules.md`](./coeur-et-modules.md). Le bot est piloté par
@@ -15,7 +15,7 @@ soit modifié.
 Bot de test : **@Testshopa1bot** (token dans `.env`, non commité).
 `ADMIN_IDS=786545252` (compte de l'utilisateur).
 
-Vérification : `npm run typecheck` (0 erreur) + `npm run smoke` (**58 checks OK**)
+Vérification : `npm run typecheck` (0 erreur) + `npm run smoke` (**66 checks OK**)
 + `npm run test:boutique` (**15 checks OK**), voir `scripts/`. Certains rendus
 visuels restent à confirmer sur le téléphone.
 
@@ -26,15 +26,14 @@ visuels restent à confirmer sur le téléphone.
 | | État |
 |---|---|
 | **V1** (bot client + base + Mini App admin) | ✅ 100 % |
-| **V2** | ~90 % — il ne reste que 2 points |
+| **V2** | ~95 % — reste le paiement/pourboire au checkout |
 | **Plus tard** | non commencé (normal) |
 
-**16 briques livrées** (historique plus bas). Bonus au-delà du plan : tournées
+**17 briques livrées** (historique plus bas). Bonus au-delà du plan : tournées
 récurrentes + choix du créneau client, prix par taille, images produits, suivi de
 tournée en direct.
 
-**Manques V2** : mode de paiement (espèces / carte) + pourboire au checkout ;
-`routes.driver_name` (multi-livreurs).
+**Manques V2** : mode de paiement (espèces / carte) + pourboire au checkout.
 **Transverse non fait** : RGPD, hébergement 24/7, gestion de stock.
 
 ---
@@ -159,13 +158,14 @@ publique. Suppression d'un produit / d'une catégorie → les fichiers image son
 14. **Tableau de bord + alertes** — `src/dashboard.ts` (`getDashboard`), `orders.updated_at` / `delivered_at` (posés dans `updateOrderStatus`). Carte tableau de bord en tête de l'onglet Commandes. Le planificateur alerte l'admin des commandes en attente depuis +20 min (`orders.alerted`, une fois).
 15. **Templates de messages** — table `message_templates` (`src/messageTemplates.ts`, 4 modèles par défaut), API `/api/templates` (CRUD), composant `MessageTemplates` dans le détail commande : chips insérables + gestion inline (`⚙️ Modèles`).
 16. **Modification d'une commande par l'admin** — `PATCH /api/orders/:id` (commande `pending` / `confirmed` uniquement, sinon 409). `updateOrderDetails()` (adresse, précision, articles → total recalculé), route via `setOrderRoute`. `catalog.resolveMenuItems()` : les articles sont re-tarifés au **prix courant** (le front n'envoie que des références). Option « prévenir le client ». `web/OrderEdit.tsx` : steppers de quantité, ajout depuis le catalogue, changement de créneau.
+17. **Multi-livreurs** — sous-module `features.deliverySlots.drivers`. Table `drivers` (nom, tél, actif/position), `routes.driver_id` + `route_templates.driver_id` (livreur par défaut, recopié à la matérialisation). `src/drivers.ts` (CRUD, requêtes à la demande), `src/api/drivers.ts` (`/api/drivers`, monté si le sous-module est actif), `POST /api/routes/:id/driver`. Au démarrage d'une tournée, chaque client reçoit « 🛵 Ton livreur : X ». Mini App : panneau *Livreurs* + `<DriverSelect>` (nouvelle tournée / par tournée / par modèle), filtre « par livreur », livreur affiché dans le tableau de bord. +8 checks smoke.
 
 ---
 
 ## Modularisation — cœur + modules (en cours)
 
 Plan en 6 étapes, cf. [`coeur-et-modules.md`](./coeur-et-modules.md). À chaque étape :
-`npm run typecheck` + `npm run smoke` (58/58) doivent rester verts, le client
+`npm run typecheck` + `npm run smoke` doivent rester verts, le client
 pizzeria ne bouge pas.
 
 1. ✅ **`src/features.ts`** — interface `ClientFeatures` + config pizzeria (comportement
@@ -227,9 +227,13 @@ nouveau métier = ajouter une entrée à `src/features.ts` + `web/`… rien d'au
 ## Ce qui reste
 
 ### V2 pas encore fait
-- `routes.driver_name` (multi-livreurs)
 - Choix explicite du mode de paiement au checkout (aujourd'hui : affiché, pas choisi) ;
   pourboire optionnel
+
+### Multi-livreurs — évolutions possibles (brique 17 = liste + affectation)
+- Vue Telegram par livreur (`/matournee`, ne voit que ses commandes, marque les
+  livraisons) — cadrage : « plus tard ».
+- Disponibilité / planning des livreurs, répartition semi-auto.
 
 ### Transverse
 - **Hébergement 24/7** — pour ne plus dépendre du tunnel cloudflared éphémère

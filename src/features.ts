@@ -23,8 +23,11 @@ export interface ClientFeatures {
   /** Étape téléphone obligatoire dans le checkout. */
   requiresPhone: boolean;
 
-  /** Module tournées : table `routes` / `route_templates`, onglet "Tournées". */
-  deliverySlots: { enabled: boolean };
+  /**
+   * Module tournées : tables `routes` / `route_templates`, onglet "Tournées".
+   * `drivers` : sous-module multi-livreurs (table `drivers`, affectation par tournée).
+   */
+  deliverySlots: { enabled: boolean; drivers: boolean };
 
   /** Étape "précision de livraison" (étage, code...). `label` = texte affiché au client. */
   deliveryNote: { enabled: boolean; label: string };
@@ -51,7 +54,7 @@ const pizzeria: ClientFeatures = {
   requiresAddress: true,
   requiresPhone: true,
 
-  deliverySlots: { enabled: true },
+  deliverySlots: { enabled: true, drivers: true },
   deliveryNote: { enabled: true, label: "Etage, code d'acces, batiment..." },
   variants: { enabled: true, label: 'Taille' },
   payment: { methods: ['cash', 'card'], tipEnabled: false },
@@ -71,7 +74,7 @@ const boutiqueDemo: ClientFeatures = {
   requiresAddress: false,
   requiresPhone: true, // on garde le numero pour prevenir "commande prete"
 
-  deliverySlots: { enabled: false },
+  deliverySlots: { enabled: false, drivers: false },
   deliveryNote: { enabled: false, label: '' },
   variants: { enabled: true, label: 'Taille' },
   payment: { methods: ['card', 'cash'], tipEnabled: false },

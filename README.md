@@ -37,7 +37,9 @@ Ce README couvre l'architecture et l'installation.
     materialises chaque jour par `src/scheduler.ts`), tournees ponctuelles, affectation
     des commandes, **ordre de livraison reordonnable**, demarrer / terminer. Pendant la
     tournee : par commande, **Livree** (notifie les 3 clients suivants de leur position)
-    ou **Souci** (annulation + raison) ;
+    ou **Souci** (annulation + raison). **Multi-livreurs** (si `deliverySlots.drivers`) :
+    liste de livreurs, affectation par tournee / par modele, filtre, notif client
+    « ton livreur : X » au demarrage ;
   - *Catalogue* : categories + produits + **tailles/variantes** (prix par taille)
     + **photo** (redimensionnee cote client, servie en `/uploads/`), activer/desactiver,
     ajouter/modifier/supprimer (le bot voit les changements immediatement : meme
@@ -79,8 +81,9 @@ se greffe sans reecrire l'existant.
 | `data/bot.db` | Base SQLite locale (ignoree par git). Cree automatiquement au 1er lancement. |
 | `src/catalog.ts` | Catalogue en base : `getMenu()` (menu filtre pour le bot) + CRUD (Mini App). |
 | `src/uploads.ts` | Images produits sur disque (`data/uploads/`), decode base64 / suppression. |
-| `src/db.ts` | Connexion SQLite (`DB_PATH`) + tables (`orders`, `categories`, `products`, `product_variants`, `sessions`, `customers`, `message_templates` ; `routes` / `route_templates` seulement si `features.deliverySlots.enabled`). |
+| `src/db.ts` | Connexion SQLite (`DB_PATH`) + tables (`orders`, `categories`, `products`, `product_variants`, `sessions`, `customers`, `message_templates` ; `routes` / `route_templates` / `drivers` seulement si `features.deliverySlots.enabled`). |
 | `src/orders.ts` | Requetes sur `orders`. Une commande = donnee **definitive**. |
+| `src/drivers.ts` | Livreurs (sous-module `deliverySlots.drivers`) : CRUD, affectation a une tournee. |
 | `src/customers.ts` | Fiche client consolidee + taux de fiabilite (calcule depuis `orders`). |
 | `src/orderFlow.ts` | Cycle de vie d'une commande : `changeStatus()`, transitions, notifications client (hors UI). |
 | `src/routes.ts` | Tournees + modeles de creneaux + suivi en direct (`markDelivered`, `notifyRouteProgress`). |

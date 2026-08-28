@@ -125,12 +125,22 @@ function ensureColumn(table: string, column: string, definition: string): void {
  * `features.deliverySlots.enabled` : pour un client en retrait boutique, ces
  * tables n'existent tout simplement pas dans sa base.
  *
- * NB : `src/routes.ts` / `src/api/routes.ts` prepareront leurs requetes des
- * l'import ; ne les charger que quand le module est actif est traite a l'etape 5
- * (montage conditionnel des routes Express + import paresseux).
+ * NB : `src/routes.ts` / `src/drivers.ts` / `src/api/routes.ts` preparent leurs
+ * requetes a la demande (buildStatements/q) pour pouvoir etre importes meme sans
+ * ces tables ; le montage des routes Express est conditionne cote serveur.
  */
 function createDeliveryTables(): void {
   db.exec(`
+    -- Livreurs : liste geree par l'admin, affectee aux tournees (sous-module drivers).
+    CREATE TABLE IF NOT EXISTS drivers (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT    NOT NULL,
+      phone      TEXT,
+      active     INTEGER NOT NULL DEFAULT 1,        -- 0/1 : masque sans supprimer
+      position   INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
     -- Modeles de tournees : creneaux recurrents (ex: 15:00 / 18:00 / 21:00 chaque jour).
     -- Un planificateur materialise les tournees du jour a partir des modeles actifs.
     CREATE TABLE IF NOT EXISTS route_templates (
@@ -138,6 +148,7 @@ function createDeliveryTables(): void {
       label        TEXT    NOT NULL,               -- affiche au client / a l'admin
       time         TEXT    NOT NULL,               -- 'HH:MM' (pour le tri + la coupure)
       max_capacity INTEGER,                        -- null = illimite
+      driver_id    INTEGER REFERENCES drivers(id) ON DELETE SET NULL,  -- livreur par defaut
       active       INTEGER NOT NULL DEFAULT 1,
       position     INTEGER NOT NULL DEFAULT 0
     );
@@ -152,6 +163,7 @@ function createDeliveryTables(): void {
       slot_time    TEXT,                           -- 'HH:MM' si issu d'un modele
       template_id  INTEGER REFERENCES route_templates(id) ON DELETE SET NULL,
       max_capacity INTEGER,
+      driver_id    INTEGER REFERENCES drivers(id) ON DELETE SET NULL,
       status       TEXT    NOT NULL DEFAULT 'planned',  -- planned | started | done
       created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
@@ -161,6 +173,8 @@ function createDeliveryTables(): void {
   ensureColumn('routes', 'slot_time', 'TEXT');
   ensureColumn('routes', 'template_id', 'INTEGER');
   ensureColumn('routes', 'max_capacity', 'INTEGER');
+  ensureColumn('routes', 'driver_id', 'INTEGER');
+  ensureColumn('route_templates', 'driver_id', 'INTEGER');
 }
 
 if (features.deliverySlots.enabled) createDeliveryTables();

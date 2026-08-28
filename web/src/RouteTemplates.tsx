@@ -1,22 +1,29 @@
 import { useState } from 'react';
 import { api } from './api';
+import { DriverSelect } from './DriverSelect';
+import { useFeatures } from './features';
 import { alertDialog, confirmDialog } from './telegram';
-import type { RouteTemplate } from './types';
+import type { Driver, RouteTemplate } from './types';
 
 interface Props {
   templates: RouteTemplate[];
+  drivers: Driver[];
   busy: boolean;
   onChange: () => Promise<void> | void;
 }
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-export function RouteTemplates({ templates, busy, onChange }: Props) {
+export function RouteTemplates({ templates, drivers, busy, onChange }: Props) {
+  const withDrivers = useFeatures().deliverySlots.drivers;
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState('');
   const [time, setTime] = useState('');
   const [capacity, setCapacity] = useState('');
+  const [driver, setDriver] = useState<number | null>(null);
   const [working, setWorking] = useState(false);
+
+  const driverName = (id: number | null) => drivers.find((d) => d.id === id)?.name ?? null;
 
   async function run(action: () => Promise<unknown>) {
     setWorking(true);
@@ -40,11 +47,13 @@ export function RouteTemplates({ templates, busy, onChange }: Props) {
         label: label.trim(),
         time,
         max_capacity: capacity ? Number(capacity) : null,
+        driver_id: withDrivers ? driver : null,
       }),
     );
     setLabel('');
     setTime('');
     setCapacity('');
+    setDriver(null);
   }
 
   const disabled = busy || working;
@@ -69,6 +78,21 @@ export function RouteTemplates({ templates, busy, onChange }: Props) {
                 {t.label} <span className="muted">- {t.time}</span>
                 {t.max_capacity != null && (
                   <span className="muted small"> - max {t.max_capacity}</span>
+                )}
+                {withDrivers && driverName(t.driver_id) && (
+                  <span className="muted small"> - {driverName(t.driver_id)}</span>
+                )}
+                {withDrivers && (
+                  <div style={{ marginTop: 4 }}>
+                    <DriverSelect
+                      drivers={drivers}
+                      value={t.driver_id}
+                      disabled={disabled}
+                      onChange={(id) =>
+                        void run(() => api.routes.updateTemplate(t.id, { driver_id: id }))
+                      }
+                    />
+                  </div>
                 )}
               </div>
               <div className="product-actions">
@@ -113,6 +137,11 @@ export function RouteTemplates({ templates, busy, onChange }: Props) {
               onChange={(e) => setCapacity(e.target.value)}
               placeholder="Capacite max (optionnel)"
             />
+            {withDrivers && (
+              <div style={{ marginTop: 6 }}>
+                <DriverSelect drivers={drivers} value={driver} onChange={setDriver} disabled={disabled} />
+              </div>
+            )}
             <button
               className="btn secondary"
               style={{ marginTop: 8 }}

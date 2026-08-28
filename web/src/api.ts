@@ -5,6 +5,7 @@ import type {
   Customer,
   CustomerSummary,
   Dashboard,
+  Driver,
   MessageTemplate,
   Order,
   Product,
@@ -131,7 +132,12 @@ export const api = {
         '/routes',
       ),
 
-    addTemplate: (body: { label: string; time: string; max_capacity?: number | null }) =>
+    addTemplate: (body: {
+      label: string;
+      time: string;
+      max_capacity?: number | null;
+      driver_id?: number | null;
+    }) =>
       request<{ template: RouteTemplate }>('/routes/templates', {
         method: 'POST',
         body: JSON.stringify(body),
@@ -146,10 +152,16 @@ export const api = {
     deleteTemplate: (id: number) =>
       request<{ ok: boolean }>(`/routes/templates/${id}`, { method: 'DELETE' }),
 
-    create: (date: string, time_slot: string) =>
+    create: (date: string, time_slot: string, driver_id?: number | null) =>
       request<{ route: Route }>('/routes', {
         method: 'POST',
-        body: JSON.stringify({ date, time_slot }),
+        body: JSON.stringify({ date, time_slot, driver_id: driver_id ?? null }),
+      }),
+
+    setDriver: (routeId: number, driver_id: number | null) =>
+      request<{ route: RouteWithOrders }>(`/routes/${routeId}/driver`, {
+        method: 'POST',
+        body: JSON.stringify({ driver_id }),
       }),
 
     assign: (routeId: number, orderId: number) =>
@@ -193,6 +205,21 @@ export const api = {
         body: JSON.stringify(patch),
       }),
     remove: (id: number) => request<{ ok: boolean }>(`/templates/${id}`, { method: 'DELETE' }),
+  },
+
+  drivers: {
+    list: () => request<{ drivers: Driver[] }>('/drivers'),
+    create: (name: string, phone?: string) =>
+      request<{ driver: Driver }>('/drivers', {
+        method: 'POST',
+        body: JSON.stringify({ name, phone: phone ?? '' }),
+      }),
+    update: (id: number, patch: Partial<Pick<Driver, 'name' | 'phone' | 'active' | 'position'>>) =>
+      request<{ driver: Driver }>(`/drivers/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      }),
+    remove: (id: number) => request<{ ok: boolean }>(`/drivers/${id}`, { method: 'DELETE' }),
   },
 
   customers: {

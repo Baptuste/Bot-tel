@@ -7,7 +7,7 @@ export interface ClientFeatures {
   fulfillment: 'delivery' | 'pickup' | 'both';
   requiresAddress: boolean;
   requiresPhone: boolean;
-  deliverySlots: { enabled: boolean };
+  deliverySlots: { enabled: boolean; drivers: boolean };
   deliveryNote: { enabled: boolean; label: string };
   variants: { enabled: boolean; label: string };
   payment: { methods: Array<'cash' | 'card'>; tipEnabled: boolean };
@@ -106,7 +106,14 @@ export interface Dashboard {
   counts: Partial<Record<OrderStatus, number>>;
   today: { orders: number; delivered: number; cancelled: number; revenue: number };
   pending: Array<{ id: number; who: string; total: number; minutes: number; overdue: boolean }>;
-  activeRoutes: Array<{ id: number; label: string; date: string; delivered: number; total: number }>;
+  activeRoutes: Array<{
+    id: number;
+    label: string;
+    date: string;
+    driver: string | null;
+    delivered: number;
+    total: number;
+  }>;
 }
 
 /** Libelle court de fiabilite pour un badge. null si rien a signaler. */
@@ -147,6 +154,14 @@ export interface Variant {
 
 export type RouteStatus = 'planned' | 'started' | 'done';
 
+export interface Driver {
+  id: number;
+  name: string;
+  phone: string | null;
+  active: boolean;
+  position: number;
+}
+
 export interface Route {
   id: number;
   date: string;
@@ -154,12 +169,14 @@ export interface Route {
   slot_time: string | null;
   template_id: number | null;
   max_capacity: number | null;
+  driver_id: number | null;
   status: RouteStatus;
   created_at: string;
 }
 
 export interface RouteWithOrders extends Route {
   orders: Order[];
+  driver: { id: number; name: string } | null;
 }
 
 export interface RouteTemplate {
@@ -167,6 +184,7 @@ export interface RouteTemplate {
   label: string;
   time: string;
   max_capacity: number | null;
+  driver_id: number | null;
   active: boolean;
   position: number;
 }

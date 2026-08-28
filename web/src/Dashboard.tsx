@@ -66,7 +66,8 @@ export function Dashboard({ onShowPending, refreshKey }: Props) {
 
       {data.activeRoutes.map((r) => (
         <div key={r.id} className="dash-route">
-          🛵 Tournée {r.label} ({r.date === new Date().toISOString().slice(0, 10) ? "auj." : r.date}) :{' '}
+          🛵 Tournée {r.label} ({r.date === new Date().toISOString().slice(0, 10) ? "auj." : r.date})
+          {r.driver ? ` — ${r.driver}` : ''} :{' '}
           <strong>
             {r.delivered}/{r.total}
           </strong>{' '}

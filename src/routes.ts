@@ -13,6 +13,7 @@
  */
 import type { Telegram } from 'telegraf';
 import { db } from './db';
+import { driverExists, getDriver, type Driver } from './drivers';
 import { changeStatus, safeSend } from './orderFlow';
 import {
   detachRouteOrders,
@@ -33,12 +34,14 @@ export interface Route {
   slot_time: string | null;
   template_id: number | null;
   max_capacity: number | null;
+  driver_id: number | null;
   status: RouteStatus;
   created_at: string;
 }
 
 export interface RouteWithOrders extends Route {
   orders: Order[];
+  driver: Pick<Driver, 'id' | 'name'> | null;
 }
 
 export interface RouteTemplate {
@@ -46,6 +49,7 @@ export interface RouteTemplate {
   label: string;
   time: string;
   max_capacity: number | null;
+  driver_id: number | null;
   active: boolean;
   position: number;
 }
@@ -66,18 +70,22 @@ const SLOT_LEAD_MINUTES = 30;
 
 function buildStatements() {
   return {
-    insert: db.prepare<[string, string]>('INSERT INTO routes (date, time_slot) VALUES (?, ?)'),
+    insert: db.prepare<[string, string, number | null]>(
+      'INSERT INTO routes (date, time_slot, driver_id) VALUES (?, ?, ?)',
+    ),
     insertFromTemplate: db.prepare<{
       date: string;
       time_slot: string;
       slot_time: string;
       template_id: number;
       max_capacity: number | null;
+      driver_id: number | null;
     }>(`
-      INSERT INTO routes (date, time_slot, slot_time, template_id, max_capacity)
-      VALUES (@date, @time_slot, @slot_time, @template_id, @max_capacity)
+      INSERT INTO routes (date, time_slot, slot_time, template_id, max_capacity, driver_id)
+      VALUES (@date, @time_slot, @slot_time, @template_id, @max_capacity, @driver_id)
     `),
     get: db.prepare<[number]>('SELECT * FROM routes WHERE id = ?'),
+    setDriver: db.prepare<[number | null, number]>('UPDATE routes SET driver_id = ? WHERE id = ?'),
     list: db.prepare(
       "SELECT * FROM routes ORDER BY CASE status WHEN 'started' THEN 0 WHEN 'planned' THEN 1 ELSE 2 END, date, slot_time, id",
     ),
@@ -96,20 +104,23 @@ function buildStatements() {
       label: string;
       time: string;
       max_capacity: number | null;
+      driver_id: number | null;
       position: number;
     }>(
-      'INSERT INTO route_templates (label, time, max_capacity, position) VALUES (@label, @time, @max_capacity, @position)',
+      'INSERT INTO route_templates (label, time, max_capacity, driver_id, position) VALUES (@label, @time, @max_capacity, @driver_id, @position)',
     ),
     updateTemplate: db.prepare<{
       id: number;
       label: string;
       time: string;
       max_capacity: number | null;
+      driver_id: number | null;
       active: number;
       position: number;
     }>(`
       UPDATE route_templates
-      SET label = @label, time = @time, max_capacity = @max_capacity, active = @active, position = @position
+      SET label = @label, time = @time, max_capacity = @max_capacity, driver_id = @driver_id,
+          active = @active, position = @position
       WHERE id = @id
     `),
     deleteTemplate: db.prepare<[number]>('DELETE FROM route_templates WHERE id = ?'),
@@ -138,7 +149,12 @@ function toTemplate(row: TemplateRow): RouteTemplate {
 }
 
 function withOrders(route: Route): RouteWithOrders {
-  return { ...route, orders: getOrdersByRoute(route.id) };
+  const driver = route.driver_id ? getDriver(route.driver_id) : null;
+  return {
+    ...route,
+    orders: getOrdersByRoute(route.id),
+    driver: driver ? { id: driver.id, name: driver.name } : null,
+  };
 }
 
 // --- Modeles de tournees ----------------------------------------------
@@ -147,7 +163,7 @@ function withOrders(route: Route): RouteWithOrders {
 export function seedDefaultTemplatesIfEmpty(): void {
   if ((q().countTemplates.get() as { n: number }).n > 0) return;
   ['15:00', '18:00', '21:00'].forEach((time, i) => {
-    q().insertTemplate.run({ label: time, time, max_capacity: null, position: i });
+    q().insertTemplate.run({ label: time, time, max_capacity: null, driver_id: null, position: i });
   });
   console.log('[routes] 3 modeles de tournees par defaut crees (15:00 / 18:00 / 21:00).');
 }
@@ -160,6 +176,7 @@ export function createTemplate(input: {
   label: string;
   time: string;
   max_capacity?: number | null;
+  driver_id?: number | null;
 }): RouteTemplate {
   const position = (q().templates.all() as TemplateRow[]).length;
   const id = Number(
@@ -167,6 +184,7 @@ export function createTemplate(input: {
       label: input.label,
       time: input.time,
       max_capacity: input.max_capacity ?? null,
+      driver_id: input.driver_id ?? null,
       position,
     }).lastInsertRowid,
   );
@@ -185,6 +203,7 @@ export function updateTemplate(
     time: patch.time ?? current.time,
     max_capacity:
       patch.max_capacity === undefined ? current.max_capacity : patch.max_capacity,
+    driver_id: patch.driver_id === undefined ? current.driver_id : patch.driver_id,
     active: patch.active === undefined ? current.active : patch.active ? 1 : 0,
     position: patch.position ?? current.position,
   });
@@ -207,6 +226,7 @@ export function ensureRoutesForDate(date: string): void {
       slot_time: t.time,
       template_id: t.id,
       max_capacity: t.max_capacity,
+      driver_id: t.driver_id,
     });
   }
 }
@@ -219,13 +239,23 @@ export function ensureUpcomingRoutes(now = new Date()): void {
 
 // --- Tournees --------------------------------------------------------
 
-export function createRoute(date: string, timeSlot: string): Route {
-  const id = Number(q().insert.run(date, timeSlot).lastInsertRowid);
+export function createRoute(date: string, timeSlot: string, driverId: number | null = null): Route {
+  const driver = driverId != null && driverExists(driverId) ? driverId : null;
+  const id = Number(q().insert.run(date, timeSlot, driver).lastInsertRowid);
   return q().get.get(id) as Route;
 }
 
 export function getRoute(id: number): Route | null {
   return (q().get.get(id) as Route | undefined) ?? null;
+}
+
+/** Affecte / retire (null) un livreur a une tournee. Renvoie la tournee a jour. */
+export function setRouteDriver(routeId: number, driverId: number | null): RouteWithOrders | null {
+  const route = getRoute(routeId);
+  if (!route) return null;
+  if (driverId != null && !driverExists(driverId)) return null;
+  q().setDriver.run(driverId, routeId);
+  return withOrders(getRoute(routeId) as Route);
 }
 
 export function listRoutes(): RouteWithOrders[] {
@@ -264,9 +294,13 @@ export async function startRoute(telegram: Telegram, id: number): Promise<RouteW
   if (!route || route.status !== 'planned') return route ? withOrders(route) : null;
 
   q().setStatus.run('started', id);
+  const driver = route.driver_id ? getDriver(route.driver_id) : null;
   for (const order of getOrdersByRoute(id)) {
     if (order.status === 'confirmed') {
       await changeStatus(telegram, order.id, 'delivering');
+      if (driver) {
+        await safeSend(telegram, order.user_id, `🛵 Ton livreur : ${driver.name}.`);
+      }
     }
   }
   await notifyRouteProgress(telegram, id); // les premiers de la file connaissent leur position

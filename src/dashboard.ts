@@ -16,7 +16,14 @@ export interface DashboardData {
   counts: Partial<Record<OrderStatus, number>>;
   today: { orders: number; delivered: number; cancelled: number; revenue: number };
   pending: Array<{ id: number; who: string; total: number; minutes: number; overdue: boolean }>;
-  activeRoutes: Array<{ id: number; label: string; date: string; delivered: number; total: number }>;
+  activeRoutes: Array<{
+    id: number;
+    label: string;
+    date: string;
+    driver: string | null;
+    delivered: number;
+    total: number;
+  }>;
 }
 
 const q = {
@@ -51,11 +58,12 @@ let _activeRoutes: Database.Statement | undefined;
 function activeRoutesStmt(): Database.Statement {
   if (!_activeRoutes) {
     _activeRoutes = db.prepare(`
-      SELECT r.id, r.time_slot AS label, r.date,
+      SELECT r.id, r.time_slot AS label, r.date, d.name AS driver,
         COUNT(o.id)                                    AS total,
         COALESCE(SUM(o.status = 'delivered'), 0)       AS delivered
       FROM routes r
-      LEFT JOIN orders o ON o.route_id = r.id
+      LEFT JOIN orders o  ON o.route_id = r.id
+      LEFT JOIN drivers d ON d.id = r.driver_id
       WHERE r.status = 'started'
       GROUP BY r.id
       ORDER BY r.date, r.slot_time

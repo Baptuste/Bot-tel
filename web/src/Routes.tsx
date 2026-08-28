@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from './api';
+import { Drivers } from './Drivers';
+import { DriverSelect } from './DriverSelect';
+import { useFeatures } from './features';
 import { RouteOrderRow } from './RouteOrderRow';
 import { RouteTemplates } from './RouteTemplates';
 import { alertDialog, confirmDialog } from './telegram';
 import {
   ROUTE_STATUS_LABEL,
   STATUS_LABEL,
+  type Driver,
   type Order,
   type RouteTemplate,
   type RouteWithOrders,
@@ -14,29 +18,38 @@ import {
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function Routes() {
+  const withDrivers = useFeatures().deliverySlots.drivers;
+
   const [templates, setTemplates] = useState<RouteTemplate[]>([]);
   const [routes, setRoutes] = useState<RouteWithOrders[]>([]);
   const [assignable, setAssignable] = useState<Order[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [date, setDate] = useState(today());
   const [slot, setSlot] = useState('');
+  const [newDriver, setNewDriver] = useState<number | null>(null);
+  const [filterDriver, setFilterDriver] = useState<number | 'all'>('all');
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.routes.list();
+      const [data, drv] = await Promise.all([
+        api.routes.list(),
+        withDrivers ? api.drivers.list() : Promise.resolve({ drivers: [] }),
+      ]);
       setTemplates(data.templates);
       setRoutes(data.routes);
       setAssignable(data.assignable);
+      setDrivers(drv.drivers);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [withDrivers]);
 
   useEffect(() => {
     void load();
@@ -56,8 +69,9 @@ export function Routes() {
 
   async function createRoute() {
     if (!slot.trim()) return;
-    await guard(() => api.routes.create(date, slot.trim()));
+    await guard(() => api.routes.create(date, slot.trim(), withDrivers ? newDriver : null));
     setSlot('');
+    setNewDriver(null);
   }
 
   async function start(r: RouteWithOrders) {
@@ -78,13 +92,19 @@ export function Routes() {
     }
   }
 
+  const shownRoutes =
+    filterDriver === 'all'
+      ? routes
+      : routes.filter((r) => (filterDriver === 0 ? r.driver_id == null : r.driver_id === filterDriver));
+
   return (
     <>
       <h1>Tournees</h1>
       {error && <div className="error">{error}</div>}
       {loading && <p className="muted">Chargement...</p>}
 
-      <RouteTemplates templates={templates} busy={busy} onChange={load} />
+      {withDrivers && <Drivers drivers={drivers} busy={busy} onChange={load} />}
+      <RouteTemplates templates={templates} drivers={drivers} busy={busy} onChange={load} />
 
       <div className="card">
         <div className="label" style={{ marginBottom: 6 }}>
@@ -98,6 +118,12 @@ export function Routes() {
           <div className="label">Creneau</div>
           <input value={slot} onChange={(e) => setSlot(e.target.value)} placeholder="18:00-20:00" />
         </div>
+        {withDrivers && (
+          <div className="field">
+            <div className="label">Livreur</div>
+            <DriverSelect drivers={drivers} value={newDriver} onChange={setNewDriver} disabled={busy} />
+          </div>
+        )}
         <button
           className="btn secondary"
           style={{ marginTop: 8 }}
@@ -108,9 +134,27 @@ export function Routes() {
         </button>
       </div>
 
+      {withDrivers && routes.length > 0 && (
+        <div className="field">
+          <div className="label">Filtrer par livreur</div>
+          <select
+            value={filterDriver === 'all' ? 'all' : String(filterDriver)}
+            onChange={(e) => setFilterDriver(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+          >
+            <option value="all">Tous</option>
+            <option value="0">Sans livreur</option>
+            {drivers.filter((d) => d.active).map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {routes.length === 0 && !loading && <p className="muted">Aucune tournee.</p>}
 
-      {routes.map((r) => (
+      {shownRoutes.map((r) => (
         <div key={r.id} className="card">
           <div className="row">
             <strong>
@@ -118,6 +162,11 @@ export function Routes() {
             </strong>
             <span className={`badge ${r.status}`}>{ROUTE_STATUS_LABEL[r.status]}</span>
           </div>
+          {withDrivers && (
+            <div className="muted small" style={{ marginBottom: 6 }}>
+              Livreur : {r.driver?.name ?? 'non affecte'}
+            </div>
+          )}
 
           {r.orders.length === 0 && <p className="muted">Aucune commande affectee.</p>}
           {r.orders.map((o, i) => (
@@ -135,6 +184,18 @@ export function Routes() {
 
           {r.status === 'planned' && (
             <>
+              {withDrivers && (
+                <div className="field" style={{ marginTop: 10 }}>
+                  <div className="label">Livreur de cette tournee</div>
+                  <DriverSelect
+                    drivers={drivers}
+                    value={r.driver_id}
+                    disabled={busy}
+                    onChange={(id) => void guard(() => api.routes.setDriver(r.id, id))}
+                  />
+                </div>
+              )}
+
               {assignable.length > 0 && (
                 <div style={{ marginTop: 10 }}>
                   <div className="label">Ajouter une commande</div>

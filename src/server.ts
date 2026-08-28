@@ -12,6 +12,7 @@ import type { Telegram } from 'telegraf';
 import { catalogRouter } from './api/catalog';
 import { customersRouter } from './api/customers';
 import { dashboardRouter } from './api/dashboard';
+import { driversRouter } from './api/drivers';
 import { featuresRouter } from './api/features';
 import { ordersRouter } from './api/orders';
 import { routesRouter } from './api/routes';
@@ -45,6 +46,7 @@ export function createServer(telegram: Telegram): express.Express {
   // absentes de sa base).
   if (features.deliverySlots.enabled) {
     app.use('/api/routes', routesRouter(telegram));
+    if (features.deliverySlots.drivers) app.use('/api/drivers', driversRouter());
   }
 
   // Toute route /api inconnue -> 404 JSON (et pas le fallback SPA).
