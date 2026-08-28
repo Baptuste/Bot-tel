@@ -4,7 +4,7 @@
 Pour le "pourquoi" des choix : [`cadrage.md`](./cadrage.md) (cadrage initial) et
 [`coeur-et-modules.md`](./coeur-et-modules.md) (direction : cœur générique + modules).
 
-> Dernière mise à jour : 2026-08-28, brique 17 (multi-livreurs).
+> Dernière mise à jour : 2026-08-28, brique 17 (multi-livreurs) + test de journée simulée.
 
 **Modularisation « cœur + modules » : terminée** (6 étapes, section dédiée plus
 bas) — voir [`coeur-et-modules.md`](./coeur-et-modules.md). Le bot est piloté par
@@ -15,9 +15,11 @@ soit modifié.
 Bot de test : **@Testshopa1bot** (token dans `.env`, non commité).
 `ADMIN_IDS=786545252` (compte de l'utilisateur).
 
-Vérification : `npm run typecheck` (0 erreur) + `npm run smoke` (**66 checks OK**)
-+ `npm run test:boutique` (**15 checks OK**), voir `scripts/`. Certains rendus
-visuels restent à confirmer sur le téléphone.
+Vérification : `npm run typecheck` (0 erreur) + `npm run smoke` (**66 checks**)
++ `npm run test:boutique` (**15**, client retrait fictif) + `npm run test:journee`
+(**30**, journée simulée : 20 clients / 3 tournées / 3 livreurs / no-shows /
+re-commandes), voir `scripts/`. Certains rendus visuels restent à confirmer sur
+le téléphone.
 
 ---
 
