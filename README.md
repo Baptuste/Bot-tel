@@ -2,9 +2,12 @@
 
 Bot Telegram d'une petite boutique de livraison + Mini App admin.
 
-**Documentation** : [`docs/cadrage.md`](docs/cadrage.md) (le pourquoi des choix,
-roadmap) et [`docs/avancement.md`](docs/avancement.md) (état réel du projet,
-historique). Ce README couvre l'architecture et l'installation.
+**Documentation** :
+- [`docs/cadrage.md`](docs/cadrage.md) — cadrage initial (le pourquoi, roadmap V1/V2)
+- [`docs/avancement.md`](docs/avancement.md) — état réel du projet, historique des briques
+- [`docs/coeur-et-modules.md`](docs/coeur-et-modules.md) — direction : cœur générique + modules par client
+
+Ce README couvre l'architecture et l'installation.
 
 ## Parcours client
 

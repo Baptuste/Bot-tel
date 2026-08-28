@@ -1,9 +1,17 @@
 # Journal d'avancement
 
 État du projet et historique des briques livrées (développées les 27–28 août 2026).
-Pour le "pourquoi" des choix, voir [`cadrage.md`](./cadrage.md).
+Pour le "pourquoi" des choix : [`cadrage.md`](./cadrage.md) (cadrage initial) et
+[`coeur-et-modules.md`](./coeur-et-modules.md) (direction : cœur générique + modules).
 
-> Dernière mise à jour : 2026-08-28, après la brique 16.
+> Dernière mise à jour : 2026-08-28, après la brique 16 + commit initial GitHub
+> (`Baptuste/Bot-tel`).
+
+**Prochaine direction** : transformer le bot mono-métier en **cœur commun +
+modules activables par client** — voir [`coeur-et-modules.md`](./coeur-et-modules.md).
+6 étapes, de la moins risquée (créer `src/features.ts`) à la plus intégrée
+(Mini App pilotée par la config), avec un test final « boutique vêtements fictive »
+pour valider que le cœur ne bouge pas.
 
 Bot de test : **@Testshopa1bot** (token dans `.env`, non commité).
 `ADMIN_IDS=786545252` (compte de l'utilisateur).
