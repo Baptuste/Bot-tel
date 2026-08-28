@@ -62,22 +62,22 @@ async function askAddress(ctx: BotContext): Promise<void> {
   }
 
   const last = getLastOrder(uid);
-  if (last) {
-    state(ctx).lastAddress = last.address;
-    state(ctx).lastPhone = last.phone;
-  }
+  const lastAddress = last?.address ?? undefined;
+  const lastPhone = last?.phone ?? undefined;
+  if (lastAddress) state(ctx).lastAddress = lastAddress;
+  if (lastPhone) state(ctx).lastPhone = lastPhone;
   const note = getCustomer(uid)?.delivery_note;
   if (note) state(ctx).lastNote = note;
 
   await ctx.reply(
     'Etape 1/5 - Adresse de livraison\n\n' +
-      (last
+      (lastAddress
         ? 'Reutilise ta derniere adresse (bouton) ou tape une nouvelle adresse.'
         : 'Indique ton adresse complete (rue, numero, ville).') +
       '\n(/annuler pour abandonner)',
-    last
+    lastAddress
       ? Markup.inlineKeyboard([
-          [Markup.button.callback(`📍 ${shorten(last.address, 45)}`, 'co:addr')],
+          [Markup.button.callback(`📍 ${shorten(lastAddress, 45)}`, 'co:addr')],
         ])
       : undefined,
   );

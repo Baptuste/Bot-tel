@@ -136,15 +136,17 @@ export function OrderDetail({ order, onBack, onChanged }: Props) {
           <div className="label">Client</div>
           {order.customer.name || (order.username ? `@${order.username}` : `id ${order.user_id}`)}
         </div>
-        <div className="field">
-          <div className="label">Telephone</div>
-          <a className="tel" href={`tel:${order.phone.replace(/\s/g, '')}`}>
-            {order.phone}
-          </a>
-        </div>
+        {order.phone && (
+          <div className="field">
+            <div className="label">Telephone</div>
+            <a className="tel" href={`tel:${order.phone.replace(/\s/g, '')}`}>
+              {order.phone}
+            </a>
+          </div>
+        )}
         <div className="field">
           <div className="label">Adresse</div>
-          {order.address}
+          {order.address ?? 'Retrait en boutique'}
         </div>
         {(order.delivery_note || order.customer.delivery_note) && (
           <div className="field">

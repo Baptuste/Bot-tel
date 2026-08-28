@@ -38,9 +38,9 @@ export interface Order {
   id: number;
   user_id: number;
   username: string | null;
-  phone: string;
+  phone: string | null;
   items: CartLine[];
-  address: string;
+  address: string | null;
   total: number;
   status: OrderStatus;
   route_id: number | null;

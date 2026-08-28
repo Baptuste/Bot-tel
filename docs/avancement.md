@@ -4,8 +4,7 @@
 Pour le "pourquoi" des choix : [`cadrage.md`](./cadrage.md) (cadrage initial) et
 [`coeur-et-modules.md`](./coeur-et-modules.md) (direction : cœur générique + modules).
 
-> Dernière mise à jour : 2026-08-28, après la brique 16 + commit initial GitHub
-> (`Baptuste/Bot-tel`).
+> Dernière mise à jour : 2026-08-28, modularisation étape 2 (voir plus bas).
 
 **Prochaine direction** : transformer le bot mono-métier en **cœur commun +
 modules activables par client** — voir [`coeur-et-modules.md`](./coeur-et-modules.md).
@@ -159,6 +158,28 @@ publique. Suppression d'un produit / d'une catégorie → les fichiers image son
 14. **Tableau de bord + alertes** — `src/dashboard.ts` (`getDashboard`), `orders.updated_at` / `delivered_at` (posés dans `updateOrderStatus`). Carte tableau de bord en tête de l'onglet Commandes. Le planificateur alerte l'admin des commandes en attente depuis +20 min (`orders.alerted`, une fois).
 15. **Templates de messages** — table `message_templates` (`src/messageTemplates.ts`, 4 modèles par défaut), API `/api/templates` (CRUD), composant `MessageTemplates` dans le détail commande : chips insérables + gestion inline (`⚙️ Modèles`).
 16. **Modification d'une commande par l'admin** — `PATCH /api/orders/:id` (commande `pending` / `confirmed` uniquement, sinon 409). `updateOrderDetails()` (adresse, précision, articles → total recalculé), route via `setOrderRoute`. `catalog.resolveMenuItems()` : les articles sont re-tarifés au **prix courant** (le front n'envoie que des références). Option « prévenir le client ». `web/OrderEdit.tsx` : steppers de quantité, ajout depuis le catalogue, changement de créneau.
+
+---
+
+## Modularisation — cœur + modules (en cours)
+
+Plan en 6 étapes, cf. [`coeur-et-modules.md`](./coeur-et-modules.md). À chaque étape :
+`npm run typecheck` + `npm run smoke` (56/56) doivent rester verts, le client
+pizzeria ne bouge pas.
+
+1. ✅ **`src/features.ts`** — interface `ClientFeatures` + config pizzeria (comportement
+   identique). Aucun autre fichier ne l'importe encore. *(commit `d52d2a4`)*
+2. ✅ **`orders.address` / `orders.phone` nullables** — schéma : `TEXT` sans `NOT NULL`
+   (bases fraîches ; les bases pizzeria existantes gardent le `NOT NULL`, SQLite ne
+   sait pas le retirer par `ALTER`, sans effet car le checkout livraison fournit
+   toujours les deux). Types : `NewOrder.phone?` / `.address?`, `OrderRow` /
+   `Order` → `string | null`, `web/src/types.ts` idem. Consommateurs mis à null-safe
+   (`renderOrderText`, `OrderDetail`, `OrderEdit`, `Routes`, `RouteOrderRow`,
+   `Orders`). **Aucun changement de comportement du checkout.**
+3. ⬜ Tables tournées (`routes` / `route_templates`) créées via une fn conditionnée par `features.deliverySlots.enabled`.
+4. ⬜ `checkout.ts` : sauter les étapes désactivées, numéro « Étape X/N » dynamique.
+5. ⬜ `GET /api/features` + Mini App (onglet Tournées masqué, libellé variantes adaptatif).
+6. ⬜ Test : client fictif « boutique vêtements, retrait, sans tournées ».
 
 ---
 

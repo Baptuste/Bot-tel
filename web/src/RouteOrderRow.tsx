@@ -37,7 +37,7 @@ export function RouteOrderRow({ routeId, routeStatus, order: o, index, count, bu
           <span className="muted">- {o.username ? `@${o.username}` : o.user_id}</span>
         </div>
         <div className="muted small">
-          {o.total} EUR - {STATUS_LABEL[o.status]} - {o.address}
+          {o.total} EUR - {STATUS_LABEL[o.status]} - {o.address ?? 'retrait boutique'}
         </div>
       </div>
 

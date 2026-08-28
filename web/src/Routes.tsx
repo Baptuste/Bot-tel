@@ -142,7 +142,7 @@ export function Routes() {
                     <div key={o.id} className="product">
                       <div>
                         #{o.id} <span className="muted">- {STATUS_LABEL[o.status]} - {o.total} EUR</span>
-                        <div className="muted small">{o.address}</div>
+                        <div className="muted small">{o.address ?? 'retrait boutique'}</div>
                       </div>
                       <button
                         className="mini"

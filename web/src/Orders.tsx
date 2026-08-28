@@ -103,7 +103,7 @@ export function Orders() {
               </span>
             )}
           </div>
-          <div className="muted">🕒 {slotText(o.route)} - {o.address}</div>
+          <div className="muted">🕒 {slotText(o.route)} - {o.address ?? 'retrait boutique'}</div>
         </div>
       ))}
 

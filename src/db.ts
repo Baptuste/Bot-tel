@@ -27,9 +27,9 @@ db.exec(`
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id     INTEGER NOT NULL,
     username    TEXT,
-    phone       TEXT    NOT NULL,
+    phone       TEXT,                           -- nullable : optionnel en mode retrait boutique (cf. features.requiresPhone)
     items       TEXT    NOT NULL,               -- JSON : CartLine[] (photo figee de la commande)
-    address     TEXT    NOT NULL,
+    address     TEXT,                           -- nullable : absent en mode retrait boutique (cf. features.requiresAddress)
     total       INTEGER NOT NULL,               -- en euros
     status      TEXT    NOT NULL DEFAULT 'pending',
     route_id    INTEGER,                        -- rempli plus tard (brique tournees)
@@ -154,3 +154,9 @@ ensureColumn('orders', 'updated_at', 'TEXT');
 ensureColumn('orders', 'delivered_at', 'TEXT');
 ensureColumn('orders', 'alerted', 'INTEGER NOT NULL DEFAULT 0');
 db.exec('UPDATE orders SET updated_at = created_at WHERE updated_at IS NULL');
+
+// Note : `orders.phone` / `orders.address` sont nullables dans le schema ci-dessus
+// (mode retrait boutique). SQLite ne sait pas retirer un NOT NULL par ALTER : une
+// base pizzeria deja creee garde donc ses colonnes NOT NULL, ce qui est sans effet
+// (le checkout livraison fournit toujours les deux). Les nouveaux clients partent
+// d'une base fraiche avec le schema nullable.

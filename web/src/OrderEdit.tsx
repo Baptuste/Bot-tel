@@ -19,7 +19,7 @@ interface Addable {
 }
 
 export function OrderEdit({ order, onDone, onCancel }: Props) {
-  const [address, setAddress] = useState(order.address);
+  const [address, setAddress] = useState(order.address ?? '');
   const [note, setNote] = useState(order.delivery_note ?? '');
   const [routeId, setRouteId] = useState<number | null>(order.route_id);
   const [items, setItems] = useState<CartLine[]>(order.items.map((l) => ({ ...l })));

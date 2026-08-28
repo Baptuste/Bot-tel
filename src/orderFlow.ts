@@ -117,8 +117,8 @@ export function renderOrderText(o: Order): string {
     `Commande #${o.id} - ${STATUS_LABEL[o.status]}\n` +
     customerFlag(o.user_id) +
     `Client : ${who}\n` +
-    `Tel : ${o.phone}\n` +
-    `Adresse : ${o.address}\n` +
+    (o.phone ? `Tel : ${o.phone}\n` : '') +
+    (o.address ? `Adresse : ${o.address}\n` : 'Retrait en boutique\n') +
     (o.delivery_note ? `Precision : ${o.delivery_note}\n` : '') +
     `${items}\n` +
     `Total : ${o.total} EUR\n` +

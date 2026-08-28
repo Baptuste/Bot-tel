@@ -24,9 +24,9 @@ export interface OrderRow {
   id: number;
   user_id: number;
   username: string | null;
-  phone: string;
+  phone: string | null;   // null = mode retrait boutique (cf. features.requiresPhone)
   items: string; // JSON brut
-  address: string;
+  address: string | null; // null = mode retrait boutique (cf. features.requiresAddress)
   total: number;
   status: OrderStatus;
   route_id: number | null;
@@ -47,8 +47,8 @@ export interface Order extends Omit<OrderRow, 'items' | 'no_show'> {
 export interface NewOrder {
   userId: number;
   username?: string | undefined;
-  phone: string;
-  address: string;
+  phone?: string | undefined;   // omis en mode retrait boutique
+  address?: string | undefined; // omis en mode retrait boutique
   items: CartLine[];
   total: number;
   routeId?: number | null;
@@ -58,9 +58,9 @@ export interface NewOrder {
 const insertOrder = db.prepare<{
   user_id: number;
   username: string | null;
-  phone: string;
+  phone: string | null;
   items: string;
-  address: string;
+  address: string | null;
   total: number;
   route_id: number | null;
   delivery_note: string | null;
@@ -138,9 +138,9 @@ export function createOrder(o: NewOrder): number {
   const info = insertOrder.run({
     user_id: o.userId,
     username: o.username ?? null,
-    phone: o.phone,
+    phone: o.phone ?? null,
     items: JSON.stringify(o.items),
-    address: o.address,
+    address: o.address ?? null,
     total: o.total,
     route_id: o.routeId ?? null,
     delivery_note: o.deliveryNote ?? null,
@@ -188,7 +188,7 @@ export const EDITABLE_STATUSES: OrderStatus[] = ['pending', 'confirmed'];
 
 const updateDetails = db.prepare<{
   id: number;
-  address: string;
+  address: string | null;
   delivery_note: string | null;
   items: string;
   total: number;
