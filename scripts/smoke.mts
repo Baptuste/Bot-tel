@@ -202,6 +202,16 @@ async function main() {
   check('PATCH modele message', (await call('PATCH', `/api/templates/${mt.json.template.id}`, { content: 'modifie' })).json.template.content === 'modifie');
   check('DELETE modele message', (await call('DELETE', `/api/templates/${mt.json.template.id}`)).json.ok === true);
 
+  // --- Config metier (pilote la Mini App) ---
+  const feat = await call('GET', '/api/features');
+  check(
+    'GET /api/features',
+    feat.status === 200 &&
+      typeof feat.json.deliverySlots?.enabled === 'boolean' &&
+      typeof feat.json.variants?.label === 'string',
+  );
+  check('  features sans auth -> 401', (await fetch(`${BASE}/api/features`)).status === 401);
+
   // --- Tableau de bord ---
   const dash = await call('GET', '/api/dashboard');
   check('GET /api/dashboard', dash.status === 200 && typeof dash.json.today?.revenue === 'number' && Array.isArray(dash.json.pending));

@@ -11,6 +11,7 @@ import './db'; // ouvre la base + cree les tables au demarrage
 import { registerAdmin } from './admin';
 import { config } from './config';
 import { createServer } from './server';
+import { features } from './features';
 import { userId, type BotContext, type QuantityState } from './context';
 import { CALLBACK_PATTERN, parseCallback } from './callbacks';
 import { clearCart, getCart, lineKey, removeLine, setLineQty } from './cart';
@@ -33,7 +34,7 @@ import {
 
 // 1er demarrage : importe menu.json + cree les modeles de tournees par defaut.
 seedCatalogIfEmpty();
-seedDefaultTemplatesIfEmpty();
+if (features.deliverySlots.enabled) seedDefaultTemplatesIfEmpty();
 seedMessageTemplatesIfEmpty();
 getMenu();
 

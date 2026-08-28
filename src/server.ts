@@ -12,9 +12,11 @@ import type { Telegram } from 'telegraf';
 import { catalogRouter } from './api/catalog';
 import { customersRouter } from './api/customers';
 import { dashboardRouter } from './api/dashboard';
+import { featuresRouter } from './api/features';
 import { ordersRouter } from './api/orders';
 import { routesRouter } from './api/routes';
 import { templatesRouter } from './api/templates';
+import { features } from './features';
 import { UPLOADS_DIR } from './uploads';
 
 const WEB_DIST = path.resolve(process.cwd(), 'web', 'dist');
@@ -31,12 +33,19 @@ export function createServer(telegram: Telegram): express.Express {
     res.json({ ok: true, webBuilt: existsSync(WEB_DIST) });
   });
 
+  app.use('/api/features', featuresRouter());
   app.use('/api/orders', ordersRouter(telegram));
   app.use('/api/catalog', catalogRouter());
-  app.use('/api/routes', routesRouter(telegram));
   app.use('/api/customers', customersRouter());
   app.use('/api/dashboard', dashboardRouter());
-  app.use('/api/templates', templatesRouter());
+  app.use('/api/templates', templatesRouter()); // modeles de MESSAGES (pas les tournees)
+
+  // Module tournees : monte seulement si le client l'a active. Pour un client en
+  // retrait boutique, /api/routes n'existe pas (elle reference des tables
+  // absentes de sa base).
+  if (features.deliverySlots.enabled) {
+    app.use('/api/routes', routesRouter(telegram));
+  }
 
   // Toute route /api inconnue -> 404 JSON (et pas le fallback SPA).
   app.use('/api', (_req, res) => {

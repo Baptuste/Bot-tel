@@ -8,6 +8,7 @@
 import type { Telegram } from 'telegraf';
 import { config } from './config';
 import { getOverduePendingIds, markAlerted, PENDING_ALERT_MINUTES } from './dashboard';
+import { features } from './features';
 import { safeSend } from './orderFlow';
 import { ensureUpcomingRoutes } from './routes';
 import { purgeSessions } from './sessionStore';
@@ -31,7 +32,7 @@ async function checkOverduePending(telegram: Telegram): Promise<void> {
 export function startScheduler(telegram: Telegram): void {
   const hourly = () => {
     try {
-      ensureUpcomingRoutes();
+      if (features.deliverySlots.enabled) ensureUpcomingRoutes();
       const purged = purgeSessions();
       if (purged > 0) console.log(`[scheduler] ${purged} session(s) abandonnee(s) purgee(s).`);
     } catch (err) {

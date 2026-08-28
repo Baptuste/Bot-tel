@@ -1,21 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { api } from './api';
 import { Catalog } from './Catalog';
 import { Customers } from './Customers';
+import { FeaturesContext } from './features';
 import { Orders } from './Orders';
 import { Routes } from './Routes';
 import { initData } from './telegram';
+import type { ClientFeatures } from './types';
 
 type Tab = 'orders' | 'routes' | 'catalog' | 'customers';
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'orders', label: 'Commandes' },
-  { key: 'routes', label: 'Tournées' },
-  { key: 'catalog', label: 'Catalogue' },
-  { key: 'customers', label: 'Clients' },
-];
-
 export function App() {
   const [tab, setTab] = useState<Tab>('orders');
+  const [features, setFeatures] = useState<ClientFeatures | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!initData) return;
+    void api
+      .features()
+      .then(setFeatures)
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, []);
 
   if (!initData) {
     return (
@@ -25,13 +31,26 @@ export function App() {
     );
   }
 
+  if (error) return <div className="error">Chargement impossible : {error}</div>;
+  if (!features) return <p className="muted">Chargement...</p>;
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'orders', label: 'Commandes' },
+    ...(features.deliverySlots.enabled ? [{ key: 'routes' as const, label: 'Tournées' }] : []),
+    { key: 'catalog', label: 'Catalogue' },
+    ...(features.reliability.enabled ? [{ key: 'customers' as const, label: 'Clients' }] : []),
+  ];
+
+  // La config a pu retirer l'onglet actuellement selectionne.
+  const active = tabs.some((t) => t.key === tab) ? tab : 'orders';
+
   return (
-    <>
+    <FeaturesContext.Provider value={features}>
       <nav className="tabs">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.key}
-            className={tab === t.key ? 'active' : ''}
+            className={active === t.key ? 'active' : ''}
             onClick={() => setTab(t.key)}
           >
             {t.label}
@@ -39,10 +58,10 @@ export function App() {
         ))}
       </nav>
 
-      {tab === 'orders' && <Orders />}
-      {tab === 'routes' && <Routes />}
-      {tab === 'catalog' && <Catalog />}
-      {tab === 'customers' && <Customers />}
-    </>
+      {active === 'orders' && <Orders />}
+      {active === 'routes' && <Routes />}
+      {active === 'catalog' && <Catalog />}
+      {active === 'customers' && <Customers />}
+    </FeaturesContext.Provider>
   );
 }

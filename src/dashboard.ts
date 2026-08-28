@@ -4,7 +4,9 @@
  *
  * "Aujourd'hui" = date LOCALE du serveur (celle de la boutique).
  */
+import type Database from 'better-sqlite3';
 import { db } from './db';
+import { features } from './features';
 import { type OrderStatus } from './orders';
 
 /** Au-dela, une commande encore "en attente" est signalee a l'admin. */
@@ -34,16 +36,6 @@ const q = {
     FROM orders WHERE status = 'pending'
     ORDER BY created_at ASC
   `),
-  activeRoutes: db.prepare(`
-    SELECT r.id, r.time_slot AS label, r.date,
-      COUNT(o.id)                                    AS total,
-      COALESCE(SUM(o.status = 'delivered'), 0)       AS delivered
-    FROM routes r
-    LEFT JOIN orders o ON o.route_id = r.id
-    WHERE r.status = 'started'
-    GROUP BY r.id
-    ORDER BY r.date, r.slot_time
-  `),
   overdue: db.prepare<[number]>(`
     SELECT id FROM orders
     WHERE status = 'pending' AND alerted = 0
@@ -52,6 +44,25 @@ const q = {
   `),
   markAlerted: db.prepare('UPDATE orders SET alerted = 1 WHERE id = ?'),
 };
+
+// Prepare a la demande : depend de la table `routes` (module tournees), qui
+// n'existe pas pour un client sans livraison.
+let _activeRoutes: Database.Statement | undefined;
+function activeRoutesStmt(): Database.Statement {
+  if (!_activeRoutes) {
+    _activeRoutes = db.prepare(`
+      SELECT r.id, r.time_slot AS label, r.date,
+        COUNT(o.id)                                    AS total,
+        COALESCE(SUM(o.status = 'delivered'), 0)       AS delivered
+      FROM routes r
+      LEFT JOIN orders o ON o.route_id = r.id
+      WHERE r.status = 'started'
+      GROUP BY r.id
+      ORDER BY r.date, r.slot_time
+    `);
+  }
+  return _activeRoutes;
+}
 
 export function getDashboard(): DashboardData {
   const counts = Object.fromEntries(
@@ -75,7 +86,9 @@ export function getDashboard(): DashboardData {
     overdue: r.minutes >= PENDING_ALERT_MINUTES,
   }));
 
-  const activeRoutes = q.activeRoutes.all() as DashboardData['activeRoutes'];
+  const activeRoutes = features.deliverySlots.enabled
+    ? (activeRoutesStmt().all() as DashboardData['activeRoutes'])
+    : [];
 
   return { counts, today, pending, activeRoutes };
 }

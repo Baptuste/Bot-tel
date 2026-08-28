@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from './api';
+import { useFeatures } from './features';
 import { alertDialog, confirmDialog } from './telegram';
 import type { Variant } from './types';
 
@@ -10,8 +11,10 @@ interface Props {
   onChange: () => Promise<void> | void;
 }
 
-/** Gestion des tailles d'un produit. 0 taille = produit simple (prix de base). */
+/** Gestion des variantes d'un produit (taille, couleur...). 0 variante = produit simple. */
 export function ProductVariants({ productId, variants, busy, onChange }: Props) {
+  const kind = useFeatures().variants.label; // "Taille", "Couleur"...
+  const kindLower = kind.toLocaleLowerCase('fr');
   const [label, setLabel] = useState('');
   const [price, setPrice] = useState('');
   const [working, setWorking] = useState(false);
@@ -51,7 +54,7 @@ export function ProductVariants({ productId, variants, busy, onChange }: Props) 
               className="mini danger"
               disabled={disabled}
               onClick={async () => {
-                if (await confirmDialog(`Supprimer la taille "${v.label}" ?`)) {
+                if (await confirmDialog(`Supprimer la ${kindLower} "${v.label}" ?`)) {
                   await run(() => api.catalog.deleteVariant(v.id));
                 }
               }}
@@ -63,7 +66,11 @@ export function ProductVariants({ productId, variants, busy, onChange }: Props) 
       ))}
 
       <div className="variant-add">
-        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Taille (Senior...)" />
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder={`${kind} (Senior...)`}
+        />
         <input
           type="number"
           inputMode="numeric"
@@ -82,7 +89,7 @@ export function ProductVariants({ productId, variants, busy, onChange }: Props) 
             })
           }
         >
-          + Taille
+          + {kind}
         </button>
       </div>
     </div>

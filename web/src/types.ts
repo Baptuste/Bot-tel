@@ -1,5 +1,19 @@
 export type OrderStatus = 'pending' | 'confirmed' | 'delivering' | 'delivered' | 'cancelled';
 
+/** Configuration metier du deploiement (miroir de `src/features.ts`, via /api/features). */
+export interface ClientFeatures {
+  clientId: string;
+  displayName: string;
+  fulfillment: 'delivery' | 'pickup' | 'both';
+  requiresAddress: boolean;
+  requiresPhone: boolean;
+  deliverySlots: { enabled: boolean };
+  deliveryNote: { enabled: boolean; label: string };
+  variants: { enabled: boolean; label: string };
+  payment: { methods: Array<'cash' | 'card'>; tipEnabled: boolean };
+  reliability: { enabled: boolean };
+}
+
 export interface CartLine {
   catId: string;
   prodId: string;

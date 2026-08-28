@@ -1,6 +1,7 @@
 import { initData } from './telegram';
 import type {
   Category,
+  ClientFeatures,
   Customer,
   CustomerSummary,
   Dashboard,
@@ -32,6 +33,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  features: () => request<ClientFeatures>('/features'),
+
   dashboard: () => request<Dashboard>('/dashboard'),
 
   listOrders: () => request<{ orders: Order[]; counts: Partial<Record<string, number>> }>('/orders'),

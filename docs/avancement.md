@@ -4,7 +4,7 @@
 Pour le "pourquoi" des choix : [`cadrage.md`](./cadrage.md) (cadrage initial) et
 [`coeur-et-modules.md`](./coeur-et-modules.md) (direction : cœur générique + modules).
 
-> Dernière mise à jour : 2026-08-28, modularisation étape 3 (voir plus bas).
+> Dernière mise à jour : 2026-08-28, modularisation étapes 4-5 (voir plus bas).
 
 **Prochaine direction** : transformer le bot mono-métier en **cœur commun +
 modules activables par client** — voir [`coeur-et-modules.md`](./coeur-et-modules.md).
@@ -15,7 +15,7 @@ pour valider que le cœur ne bouge pas.
 Bot de test : **@Testshopa1bot** (token dans `.env`, non commité).
 `ADMIN_IDS=786545252` (compte de l'utilisateur).
 
-Vérification : `npm run typecheck` (0 erreur) + `npm run smoke` (**56 checks OK**,
+Vérification : `npm run typecheck` (0 erreur) + `npm run smoke` (**58 checks OK**,
 voir `scripts/`). Certains rendus visuels restent à confirmer sur le téléphone.
 
 ---
@@ -164,7 +164,7 @@ publique. Suppression d'un produit / d'une catégorie → les fichiers image son
 ## Modularisation — cœur + modules (en cours)
 
 Plan en 6 étapes, cf. [`coeur-et-modules.md`](./coeur-et-modules.md). À chaque étape :
-`npm run typecheck` + `npm run smoke` (56/56) doivent rester verts, le client
+`npm run typecheck` + `npm run smoke` (58/58) doivent rester verts, le client
 pizzeria ne bouge pas.
 
 1. ✅ **`src/features.ts`** — interface `ClientFeatures` + config pizzeria (comportement
@@ -181,8 +181,20 @@ pizzeria ne bouge pas.
    appelée seulement si `features.deliverySlots.enabled`. Pour un client retrait
    boutique, ces tables n'existent pas. *(La garde à l'import de `routes.ts` /
    `api/routes.ts` — requêtes préparées au chargement — est traitée à l'étape 5.)*
-4. ⬜ `checkout.ts` : sauter les étapes désactivées, numéro « Étape X/N » dynamique.
-5. ⬜ `GET /api/features` + Mini App (onglet Tournées masqué, libellé variantes adaptatif).
+4. ✅ **`checkout.ts` piloté par `features.ts`** — chaînage `goToPhone/Slot/Note/
+   Confirm`, chacun joue son étape ou saute directement à la suivante selon
+   `requiresAddress` / `requiresPhone` / `deliverySlots.enabled` /
+   `deliveryNote.enabled`. En-tête « Étape X/N » calculée depuis `FLOW`. Récap :
+   lignes conditionnelles + ligne Paiement dérivée de `fulfillment` /
+   `payment.methods` (identique pour la pizzeria). `upsertCustomer` accepte
+   `phone`/`address` optionnels.
+5. ✅ **`GET /api/features` + Mini App adaptative** — endpoint (auth admin) qui
+   renvoie `features`. `/api/routes` monté seulement si `deliverySlots.enabled` ;
+   `routes.ts` prépare ses requêtes à la demande (`buildStatements()` + `q()`),
+   `dashboard.ts` idem pour `activeRoutes` ; `scheduler.ts` / `index.ts` gardés.
+   Front : `FeaturesContext` chargé une fois par `App`, onglets Tournées /
+   Clients conditionnels (`deliverySlots` / `reliability`), libellé variantes =
+   `features.variants.label`. +2 checks smoke (`/api/features`).
 6. ⬜ Test : client fictif « boutique vêtements, retrait, sans tournées ».
 
 ---
