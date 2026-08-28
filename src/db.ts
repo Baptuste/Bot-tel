@@ -9,6 +9,7 @@
  */
 import Database from 'better-sqlite3';
 import { resolve } from 'node:path';
+import { features } from './features';
 
 const DB_PATH = resolve(process.cwd(), 'data', 'bot.db');
 
@@ -106,31 +107,6 @@ db.exec(`
     data        TEXT    NOT NULL,          -- JSON de l'objet session
     updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
   );
-
-  -- Modeles de tournees : creneaux recurrents (ex: 15:00 / 18:00 / 21:00 chaque jour).
-  -- Un planificateur materialise les tournees du jour a partir des modeles actifs.
-  CREATE TABLE IF NOT EXISTS route_templates (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    label        TEXT    NOT NULL,               -- affiche au client / a l'admin
-    time         TEXT    NOT NULL,               -- 'HH:MM' (pour le tri + la coupure)
-    max_capacity INTEGER,                        -- null = illimite
-    active       INTEGER NOT NULL DEFAULT 1,
-    position     INTEGER NOT NULL DEFAULT 0
-  );
-
-  -- Tournees de livraison : instance d'un creneau, un jour donne.
-  -- Une commande confirmee y est affectee (par le client au checkout, ou par l'admin).
-  -- Demarrer / terminer une tournee fait avancer le statut de ses commandes (+ notif client).
-  CREATE TABLE IF NOT EXISTS routes (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    date         TEXT    NOT NULL,               -- 'YYYY-MM-DD'
-    time_slot    TEXT    NOT NULL,               -- libelle affiche
-    slot_time    TEXT,                           -- 'HH:MM' si issu d'un modele
-    template_id  INTEGER REFERENCES route_templates(id) ON DELETE SET NULL,
-    max_capacity INTEGER,
-    status       TEXT    NOT NULL DEFAULT 'planned',  -- planned | started | done
-    created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
-  );
 `);
 
 // --- Migrations additives pour les bases deja creees ---------------------
@@ -142,9 +118,51 @@ function ensureColumn(table: string, column: string, definition: string): void {
   }
 }
 
-ensureColumn('routes', 'slot_time', 'TEXT');
-ensureColumn('routes', 'template_id', 'INTEGER');
-ensureColumn('routes', 'max_capacity', 'INTEGER');
+/**
+ * Tables du module "tournees" (livraison a creneaux). Creees uniquement si
+ * `features.deliverySlots.enabled` : pour un client en retrait boutique, ces
+ * tables n'existent tout simplement pas dans sa base.
+ *
+ * NB : `src/routes.ts` / `src/api/routes.ts` prepareront leurs requetes des
+ * l'import ; ne les charger que quand le module est actif est traite a l'etape 5
+ * (montage conditionnel des routes Express + import paresseux).
+ */
+function createDeliveryTables(): void {
+  db.exec(`
+    -- Modeles de tournees : creneaux recurrents (ex: 15:00 / 18:00 / 21:00 chaque jour).
+    -- Un planificateur materialise les tournees du jour a partir des modeles actifs.
+    CREATE TABLE IF NOT EXISTS route_templates (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      label        TEXT    NOT NULL,               -- affiche au client / a l'admin
+      time         TEXT    NOT NULL,               -- 'HH:MM' (pour le tri + la coupure)
+      max_capacity INTEGER,                        -- null = illimite
+      active       INTEGER NOT NULL DEFAULT 1,
+      position     INTEGER NOT NULL DEFAULT 0
+    );
+
+    -- Tournees de livraison : instance d'un creneau, un jour donne.
+    -- Une commande confirmee y est affectee (par le client au checkout, ou par l'admin).
+    -- Demarrer / terminer une tournee fait avancer le statut de ses commandes (+ notif client).
+    CREATE TABLE IF NOT EXISTS routes (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      date         TEXT    NOT NULL,               -- 'YYYY-MM-DD'
+      time_slot    TEXT    NOT NULL,               -- libelle affiche
+      slot_time    TEXT,                           -- 'HH:MM' si issu d'un modele
+      template_id  INTEGER REFERENCES route_templates(id) ON DELETE SET NULL,
+      max_capacity INTEGER,
+      status       TEXT    NOT NULL DEFAULT 'planned',  -- planned | started | done
+      created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
+  // Migrations additives des bases tournees deja creees.
+  ensureColumn('routes', 'slot_time', 'TEXT');
+  ensureColumn('routes', 'template_id', 'INTEGER');
+  ensureColumn('routes', 'max_capacity', 'INTEGER');
+}
+
+if (features.deliverySlots.enabled) createDeliveryTables();
+
 ensureColumn('products', 'image', 'TEXT');
 ensureColumn('orders', 'cancellation_reason', 'TEXT');
 ensureColumn('orders', 'no_show', 'INTEGER NOT NULL DEFAULT 0');

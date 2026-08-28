@@ -4,7 +4,7 @@
 Pour le "pourquoi" des choix : [`cadrage.md`](./cadrage.md) (cadrage initial) et
 [`coeur-et-modules.md`](./coeur-et-modules.md) (direction : cœur générique + modules).
 
-> Dernière mise à jour : 2026-08-28, modularisation étape 2 (voir plus bas).
+> Dernière mise à jour : 2026-08-28, modularisation étape 3 (voir plus bas).
 
 **Prochaine direction** : transformer le bot mono-métier en **cœur commun +
 modules activables par client** — voir [`coeur-et-modules.md`](./coeur-et-modules.md).
@@ -176,7 +176,11 @@ pizzeria ne bouge pas.
    `Order` → `string | null`, `web/src/types.ts` idem. Consommateurs mis à null-safe
    (`renderOrderText`, `OrderDetail`, `OrderEdit`, `Routes`, `RouteOrderRow`,
    `Orders`). **Aucun changement de comportement du checkout.**
-3. ⬜ Tables tournées (`routes` / `route_templates`) créées via une fn conditionnée par `features.deliverySlots.enabled`.
+3. ✅ **Tables tournées conditionnelles** — `route_templates` + `routes` + leurs
+   `ensureColumn` sortis du `db.exec` principal dans `createDeliveryTables()`,
+   appelée seulement si `features.deliverySlots.enabled`. Pour un client retrait
+   boutique, ces tables n'existent pas. *(La garde à l'import de `routes.ts` /
+   `api/routes.ts` — requêtes préparées au chargement — est traitée à l'étape 5.)*
 4. ⬜ `checkout.ts` : sauter les étapes désactivées, numéro « Étape X/N » dynamique.
 5. ⬜ `GET /api/features` + Mini App (onglet Tournées masqué, libellé variantes adaptatif).
 6. ⬜ Test : client fictif « boutique vêtements, retrait, sans tournées ».
