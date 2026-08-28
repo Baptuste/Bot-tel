@@ -1,0 +1,32 @@
+{
+  "name": "bot-tel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bot Telegram boutique/livraison - bot client + mini-admin + API/Mini App admin",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "build:web": "npm --prefix web run build",
+    "build:all": "npm run build && npm run build:web",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit && npm --prefix web run typecheck",
+    "smoke": "tsx scripts/smoke.mts",
+    "web:install": "npm --prefix web install",
+    "web:dev": "npm --prefix web run dev",
+    "tunnel": "cloudflared tunnel --url http://localhost:3000"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.22.2",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^4.17.25",
+    "@types/node": "^20.14.10",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.4"
+  }
+}

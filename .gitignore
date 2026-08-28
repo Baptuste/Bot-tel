@@ -1,0 +1,23 @@
+# Dependances
+node_modules/
+web/node_modules/
+
+# Build
+dist/
+web/dist/
+
+# Secrets - JAMAIS commite
+.env
+
+# Base de donnees SQLite (locale)
+data/*.db
+data/*.db-shm
+data/*.db-wal
+!data/.gitkeep
+
+# Images produits uploadees
+data/uploads/
+
+# Logs
+*.log
+npm-debug.log*

@@ -1,0 +1,27 @@
+{
+  "pizzas": {
+    "label": "🍕 Pizzas",
+    "items": {
+      "margherita": {
+        "label": "Margherita",
+        "price": 9,
+        "description": "Tomate, mozzarella, basilic"
+      },
+      "reine": {
+        "label": "Reine",
+        "price": 11,
+        "description": "Jambon, champignons, mozzarella"
+      }
+    }
+  },
+  "burgers": {
+    "label": "🍔 Burgers",
+    "items": {
+      "classic": {
+        "label": "Classic",
+        "price": 8,
+        "description": "Steak, cheddar, salade, tomate"
+      }
+    }
+  }
+}

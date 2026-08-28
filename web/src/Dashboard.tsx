@@ -1,0 +1,78 @@
+import { useCallback, useEffect, useState } from 'react';
+import { api } from './api';
+import type { Dashboard as DashboardData } from './types';
+
+interface Props {
+  /** Appelé quand on tape l'alerte "commandes en attente". */
+  onShowPending: () => void;
+  /** Incrémenté par le parent pour forcer un rafraîchissement. */
+  refreshKey: number;
+}
+
+export function Dashboard({ onShowPending, refreshKey }: Props) {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setData(await api.dashboard());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load, refreshKey]);
+
+  if (error) return <div className="error">{error}</div>;
+  if (!data) return null;
+
+  const overdue = data.pending.filter((p) => p.overdue);
+
+  return (
+    <div className="dash">
+      <div className="dash-today">
+        <div>
+          <strong>{data.today.orders}</strong>
+          <span className="muted small">commandes</span>
+        </div>
+        <div>
+          <strong>{data.today.delivered}</strong>
+          <span className="muted small">livrées</span>
+        </div>
+        <div>
+          <strong>{data.today.revenue} €</strong>
+          <span className="muted small">encaissé</span>
+        </div>
+        {data.today.cancelled > 0 && (
+          <div>
+            <strong>{data.today.cancelled}</strong>
+            <span className="muted small">annulées</span>
+          </div>
+        )}
+      </div>
+
+      {data.pending.length > 0 && (
+        <button
+          className={`dash-alert ${overdue.length > 0 ? 'urgent' : ''}`}
+          onClick={onShowPending}
+        >
+          {overdue.length > 0
+            ? `⏰ ${overdue.length} commande(s) en attente depuis +${Math.max(...overdue.map((p) => p.minutes))} min`
+            : `${data.pending.length} commande(s) en attente`}
+        </button>
+      )}
+
+      {data.activeRoutes.map((r) => (
+        <div key={r.id} className="dash-route">
+          🛵 Tournée {r.label} ({r.date === new Date().toISOString().slice(0, 10) ? "auj." : r.date}) :{' '}
+          <strong>
+            {r.delivered}/{r.total}
+          </strong>{' '}
+          livrées
+        </div>
+      ))}
+    </div>
+  );
+}
