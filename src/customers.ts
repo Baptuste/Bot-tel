@@ -41,8 +41,8 @@ const q = {
   upsert: db.prepare<{
     user_id: number;
     username: string | null;
-    phone: string;
-    address: string;
+    phone: string | null;
+    address: string | null;
     delivery_note: string | null;
   }>(`
     INSERT INTO customers (user_id, username, phone, address, delivery_note)
@@ -96,15 +96,15 @@ function toCustomer(row: CustomerRow): Customer {
 export function upsertCustomer(input: {
   userId: number;
   username?: string | undefined;
-  phone: string;
-  address: string;
+  phone?: string | undefined;
+  address?: string | undefined;
   deliveryNote?: string | null;
 }): void {
   q.upsert.run({
     user_id: input.userId,
     username: input.username ?? null,
-    phone: input.phone,
-    address: input.address,
+    phone: input.phone ?? null,
+    address: input.address ?? null,
     delivery_note: input.deliveryNote ?? null,
   });
 }

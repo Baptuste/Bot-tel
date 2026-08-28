@@ -1,11 +1,17 @@
 /**
  * Scene "checkout" (WizardScene = scene lineaire a etapes).
  *
- *   Etape 1  adresse de livraison
- *   Etape 2  telephone
- *   Etape 3  creneau de livraison (issu des modeles de tournees)
- *   Etape 4  precision de livraison (etage, code) - optionnelle
- *   Etape 5  recapitulatif + confirmation
+ * Les etapes REELLEMENT jouees dependent de `src/features.ts` :
+ *
+ *   adresse      si features.requiresAddress
+ *   telephone    si features.requiresPhone
+ *   creneau      si features.deliverySlots.enabled
+ *   precision    si features.deliveryNote.enabled
+ *   recapitulatif + confirmation   (toujours)
+ *
+ * Le chainage est imperatif : chaque `goToX` joue son etape ou la saute en
+ * appelant directement la suivante. Le numero "Etape X/N" est calcule a partir
+ * de `FLOW` (liste des etapes actives pour cette configuration).
  *
  * Adresse / numero / precision de la derniere commande proposes en un clic.
  *
@@ -21,11 +27,35 @@ import { userId, type BotContext, type CheckoutState } from '../context';
 import { getCustomer, upsertCustomer } from '../customers';
 import { createOrder, getLastOrder, getOrder } from '../orders';
 import { getAvailableSlots, type Slot } from '../routes';
+import { features } from '../features';
 
 export const CHECKOUT_SCENE_ID = 'checkout';
 
 // Validation volontairement permissive : chiffres, espaces, + ( ) . -
 const PHONE_RE = /^\+?[\d\s().-]{6,20}$/;
+
+// Index des handlers dans la WizardScene (cf. `checkoutScene` en bas de fichier).
+const STEP = {
+  collectAddress: 1,
+  collectPhone: 2,
+  collectSlot: 3,
+  collectNote: 4,
+  confirm: 5,
+} as const;
+
+// Etapes actives pour cette configuration client -> numerotation affichee.
+const FLOW: string[] = [
+  ...(features.requiresAddress ? ['address'] : []),
+  ...(features.requiresPhone ? ['phone'] : []),
+  ...(features.deliverySlots.enabled ? ['slot'] : []),
+  ...(features.deliveryNote.enabled ? ['note'] : []),
+  'confirm',
+];
+
+function stepHeader(key: string, title: string): string {
+  const n = FLOW.indexOf(key) + 1;
+  return `Etape ${n}/${FLOW.length} - ${title}`;
+}
 
 function slotButtonLabel(s: Slot): string {
   return `🕒 ${s.time} ${s.when === 'today' ? "aujourd'hui" : 'demain'}`;
@@ -49,6 +79,46 @@ async function stripButtons(ctx: BotContext): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Enchainement : chaque `goToX` joue l'etape X ou la saute (config-dependant).
+// ---------------------------------------------------------------------------
+
+async function goToPhone(ctx: BotContext): Promise<void> {
+  if (!features.requiresPhone) {
+    state(ctx).phone = undefined;
+    await goToSlot(ctx);
+    return;
+  }
+  await promptPhone(ctx);
+  ctx.wizard.selectStep(STEP.collectPhone);
+}
+
+async function goToSlot(ctx: BotContext): Promise<void> {
+  if (!features.deliverySlots.enabled) {
+    state(ctx).routeId = null;
+    state(ctx).slotLabel = undefined;
+    await goToNote(ctx);
+    return;
+  }
+  await promptSlot(ctx);
+  ctx.wizard.selectStep(STEP.collectSlot);
+}
+
+async function goToNote(ctx: BotContext): Promise<void> {
+  if (!features.deliveryNote.enabled) {
+    state(ctx).deliveryNote = undefined;
+    await goToConfirm(ctx);
+    return;
+  }
+  await promptNote(ctx);
+  ctx.wizard.selectStep(STEP.collectNote);
+}
+
+async function goToConfirm(ctx: BotContext): Promise<void> {
+  await promptConfirm(ctx);
+  ctx.wizard.selectStep(STEP.confirm);
+}
+
+// ---------------------------------------------------------------------------
 // Etape 1 : adresse
 // ---------------------------------------------------------------------------
 
@@ -69,8 +139,14 @@ async function askAddress(ctx: BotContext): Promise<void> {
   const note = getCustomer(uid)?.delivery_note;
   if (note) state(ctx).lastNote = note;
 
+  if (!features.requiresAddress) {
+    state(ctx).address = undefined;
+    await goToPhone(ctx);
+    return;
+  }
+
   await ctx.reply(
-    'Etape 1/5 - Adresse de livraison\n\n' +
+    `${stepHeader('address', 'Adresse de livraison')}\n\n` +
       (lastAddress
         ? 'Reutilise ta derniere adresse (bouton) ou tape une nouvelle adresse.'
         : 'Indique ton adresse complete (rue, numero, ville).') +
@@ -81,7 +157,7 @@ async function askAddress(ctx: BotContext): Promise<void> {
         ])
       : undefined,
   );
-  ctx.wizard.next();
+  ctx.wizard.selectStep(STEP.collectAddress);
 }
 
 const collectAddress = new Composer<BotContext>();
@@ -95,8 +171,7 @@ collectAddress.action('co:addr', async (ctx) => {
   await ctx.answerCbQuery('Adresse reutilisee');
   await stripButtons(ctx);
   state(ctx).address = last;
-  await promptPhone(ctx);
-  ctx.wizard.next();
+  await goToPhone(ctx);
 });
 
 collectAddress.on(message('text'), async (ctx) => {
@@ -106,8 +181,7 @@ collectAddress.on(message('text'), async (ctx) => {
     return;
   }
   state(ctx).address = text;
-  await promptPhone(ctx);
-  ctx.wizard.next();
+  await goToPhone(ctx);
 });
 
 collectAddress.on('message', async (ctx) => {
@@ -121,11 +195,11 @@ collectAddress.on('message', async (ctx) => {
 async function promptPhone(ctx: BotContext): Promise<void> {
   const last = state(ctx).lastPhone;
   await ctx.reply(
-    'Etape 2/5 - Telephone\n\n' +
+    `${stepHeader('phone', 'Telephone')}\n\n` +
       (last
         ? 'Reutilise ton dernier numero (bouton) ou tape-en un nouveau.'
         : 'Indique ton numero de telephone (ex : 06 12 34 56 78).') +
-      '\nIl permet de te joindre pour la livraison.',
+      '\nIl permet de te joindre pour la commande.',
     last ? Markup.inlineKeyboard([[Markup.button.callback(`📞 ${last}`, 'co:phone')]]) : undefined,
   );
 }
@@ -141,8 +215,7 @@ collectPhone.action('co:phone', async (ctx) => {
   await ctx.answerCbQuery('Numero reutilise');
   await stripButtons(ctx);
   state(ctx).phone = last;
-  await promptSlot(ctx);
-  ctx.wizard.next();
+  await goToSlot(ctx);
 });
 
 collectPhone.on(message('text'), async (ctx) => {
@@ -152,8 +225,7 @@ collectPhone.on(message('text'), async (ctx) => {
     return;
   }
   state(ctx).phone = phone;
-  await promptSlot(ctx);
-  ctx.wizard.next();
+  await goToSlot(ctx);
 });
 
 collectPhone.on('message', async (ctx) => {
@@ -170,7 +242,7 @@ async function promptSlot(ctx: BotContext): Promise<void> {
   rows.push([Markup.button.callback('Peu importe (au plus tot)', 'slot:any')]);
 
   await ctx.reply(
-    'Etape 3/5 - Creneau de livraison\n\n' +
+    `${stepHeader('slot', 'Creneau de livraison')}\n\n` +
       (slots.length > 0
         ? 'Choisis quand tu veux etre livre :'
         : 'Aucun creneau programme pour le moment. On te livrera au plus tot.'),
@@ -201,8 +273,7 @@ collectSlot.action(/^slot:(any|\d+)$/, async (ctx) => {
     s.slotLabel = `${chosen.time} ${chosen.when === 'today' ? "aujourd'hui" : 'demain'}`;
   }
 
-  await promptNote(ctx);
-  ctx.wizard.next();
+  await goToNote(ctx);
 });
 
 collectSlot.on('message', async (ctx) => {
@@ -219,8 +290,8 @@ async function promptNote(ctx: BotContext): Promise<void> {
   if (last) rows.unshift([Markup.button.callback(`📝 ${shorten(last, 40)}`, 'co:note')]);
 
   await ctx.reply(
-    'Etape 4/5 - Precision pour la livraison\n\n' +
-      'Etage, code d\'acces, batiment... Tape ta precision ou choisis ci-dessous.',
+    `${stepHeader('note', 'Precision pour la livraison')}\n\n` +
+      `${features.deliveryNote.label} Tape ta precision ou choisis ci-dessous.`,
     Markup.inlineKeyboard(rows),
   );
 }
@@ -231,23 +302,20 @@ collectNote.action('co:note', async (ctx) => {
   await ctx.answerCbQuery('Precision reutilisee');
   await stripButtons(ctx);
   state(ctx).deliveryNote = state(ctx).lastNote;
-  await promptConfirm(ctx);
-  ctx.wizard.next();
+  await goToConfirm(ctx);
 });
 
 collectNote.action('co:nonote', async (ctx) => {
   await ctx.answerCbQuery();
   await stripButtons(ctx);
   state(ctx).deliveryNote = undefined;
-  await promptConfirm(ctx);
-  ctx.wizard.next();
+  await goToConfirm(ctx);
 });
 
 collectNote.on(message('text'), async (ctx) => {
   const text = ctx.message.text.trim();
   state(ctx).deliveryNote = text.length > 0 ? text.slice(0, 200) : undefined;
-  await promptConfirm(ctx);
-  ctx.wizard.next();
+  await goToConfirm(ctx);
 });
 
 collectNote.on('message', async (ctx) => {
@@ -258,6 +326,15 @@ collectNote.on('message', async (ctx) => {
 // Etape 5 : recapitulatif + confirmation
 // ---------------------------------------------------------------------------
 
+/** Ligne "Paiement : ..." du recap, derivee de la config. */
+function paymentLine(): string {
+  const remise = features.fulfillment === 'pickup' ? 'au retrait' : 'a la livraison';
+  const methods = features.payment.methods
+    .map((m) => (m === 'cash' ? 'especes' : 'carte'))
+    .join(' / ');
+  return `Paiement : ${remise} (${methods} sur place)`;
+}
+
 async function promptConfirm(ctx: BotContext): Promise<void> {
   const uid = userId(ctx);
   const lines = getCart(uid);
@@ -265,14 +342,14 @@ async function promptConfirm(ctx: BotContext): Promise<void> {
   const body = lines.map((l) => `- ${l.label} x ${l.qty}  =  ${l.price * l.qty} EUR`).join('\n');
 
   await ctx.reply(
-    'Etape 5/5 - Confirmation\n\n' +
+    `${stepHeader('confirm', 'Confirmation')}\n\n` +
       `${body}\n\n` +
       `Total : ${cartTotal(uid)} EUR\n` +
-      `Adresse : ${s.address}\n` +
-      `Telephone : ${s.phone}\n` +
-      `Creneau : ${s.slotLabel ?? 'au plus tot'}\n` +
+      (s.address ? `Adresse : ${s.address}\n` : '') +
+      (s.phone ? `Telephone : ${s.phone}\n` : '') +
+      (features.deliverySlots.enabled ? `Creneau : ${s.slotLabel ?? 'au plus tot'}\n` : '') +
       (s.deliveryNote ? `Precision : ${s.deliveryNote}\n` : '') +
-      'Paiement : a la livraison (especes / carte sur place)\n\n' +
+      `${paymentLine()}\n\n` +
       'On valide la commande ?',
     Markup.inlineKeyboard([
       [Markup.button.callback('✅ Confirmer', 'order:confirm')],
@@ -300,7 +377,9 @@ confirmStep.action('order:confirm', async (ctx) => {
   }
 
   const lines = getCart(uid);
-  if (lines.length === 0 || !address || !phone) {
+  const missingInfo =
+    (features.requiresAddress && !address) || (features.requiresPhone && !phone);
+  if (lines.length === 0 || missingInfo) {
     await ctx.editMessageText(
       removed.length > 0
         ? 'Ton panier est vide apres retrait des produits indisponibles. /start pour recommencer.'
@@ -333,8 +412,8 @@ confirmStep.action('order:confirm', async (ctx) => {
   await ctx.editMessageText(
     `✅ Commande #${orderId} enregistree !\n\n` +
       'Statut : en attente de confirmation\n' +
-      `Creneau : ${slotLabel ?? 'au plus tot'}\n\n` +
-      'Tu recevras un message des que la commande est confirmee.',
+      (features.deliverySlots.enabled ? `Creneau : ${slotLabel ?? 'au plus tot'}\n` : '') +
+      '\nTu recevras un message des que la commande est confirmee.',
   );
   await ctx.scene.leave();
 
