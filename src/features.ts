@@ -6,11 +6,9 @@
  * ("ce bot est fait pour la livraison") par un raisonnement déclaratif
  * ("ce client a activé tel et tel module").
  *
- * Modèle multi-tenant : un process / une base SQLite par client. Ce fichier est
- * le SEUL qui doit changer pour adapter le bot à un nouveau métier.
- *
- * Étape 1 du plan : ce module existe mais AUCUN autre fichier ne le lit encore.
- * Le comportement du bot est strictement identique à avant — juste explicité.
+ * Modèle multi-tenant : un process / une base SQLite par client. En pratique le
+ * client actif est choisi par la variable d'environnement `CLIENT_ID`
+ * (défaut : `pizzeria`). Ajouter un métier = ajouter une entrée au registre.
  */
 
 export interface ClientFeatures {
@@ -42,10 +40,10 @@ export interface ClientFeatures {
 }
 
 /**
- * Client actuel : pizzeria / livraison à domicile.
- * Reproduit EXACTEMENT le comportement du bot d'aujourd'hui.
+ * Client historique : pizzeria / livraison à domicile.
+ * Reproduit EXACTEMENT le comportement du bot d'origine.
  */
-export const features: ClientFeatures = {
+const pizzeria: ClientFeatures = {
   clientId: 'pizzeria-test',
   displayName: 'Pizzeria Test',
 
@@ -59,3 +57,32 @@ export const features: ClientFeatures = {
   payment: { methods: ['cash', 'card'], tipEnabled: false },
   reliability: { enabled: true },
 };
+
+/**
+ * Client fictif de validation (étape 6 du plan) : boutique de vêtements, retrait
+ * en magasin, sans tournées. Aucune adresse, pas de créneau, pas de fiabilité.
+ * Sert à vérifier que le cœur fonctionne sans être modifié pour ce métier.
+ */
+const boutiqueDemo: ClientFeatures = {
+  clientId: 'boutique-demo',
+  displayName: 'Boutique Demo (vetements, retrait)',
+
+  fulfillment: 'pickup',
+  requiresAddress: false,
+  requiresPhone: true, // on garde le numero pour prevenir "commande prete"
+
+  deliverySlots: { enabled: false },
+  deliveryNote: { enabled: false, label: '' },
+  variants: { enabled: true, label: 'Taille' },
+  payment: { methods: ['card', 'cash'], tipEnabled: false },
+  reliability: { enabled: false },
+};
+
+const REGISTRY: Record<string, ClientFeatures> = {
+  pizzeria,
+  'boutique-demo': boutiqueDemo,
+};
+
+const active = process.env.CLIENT_ID ?? 'pizzeria';
+
+export const features: ClientFeatures = REGISTRY[active] ?? pizzeria;

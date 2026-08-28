@@ -11,7 +11,9 @@ import Database from 'better-sqlite3';
 import { resolve } from 'node:path';
 import { features } from './features';
 
-const DB_PATH = resolve(process.cwd(), 'data', 'bot.db');
+// Base par client (multi-tenant) : un chemin par deploiement. `DB_PATH` permet
+// d'isoler une base secondaire (tests, second client sur la meme machine).
+const DB_PATH = resolve(process.cwd(), process.env.DB_PATH ?? 'data/bot.db');
 
 export const db = new Database(DB_PATH);
 

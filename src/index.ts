@@ -6,6 +6,7 @@
  * Mini-admin bot : /admin (tableau de bord + transitions de statut + notifs client).
  * Mini App admin : servie par src/server.ts (auth initData), ouverte via un bouton.
  */
+import 'dotenv/config'; // AVANT './db' et './features' : CLIENT_ID / DB_PATH lus a l'import
 import { Markup, Scenes, Telegraf, session } from 'telegraf';
 import './db'; // ouvre la base + cree les tables au demarrage
 import { registerAdmin } from './admin';

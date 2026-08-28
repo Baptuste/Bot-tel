@@ -12,6 +12,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit && npm --prefix web run typecheck",
     "smoke": "tsx scripts/smoke.mts",
+    "test:boutique": "tsx scripts/boutique.mts",
     "web:install": "npm --prefix web install",
     "web:dev": "npm --prefix web run dev",
     "tunnel": "cloudflared tunnel --url http://localhost:3000"

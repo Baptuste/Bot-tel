@@ -4,19 +4,20 @@
 Pour le "pourquoi" des choix : [`cadrage.md`](./cadrage.md) (cadrage initial) et
 [`coeur-et-modules.md`](./coeur-et-modules.md) (direction : cœur générique + modules).
 
-> Dernière mise à jour : 2026-08-28, modularisation étapes 4-5 (voir plus bas).
+> Dernière mise à jour : 2026-08-28, modularisation terminée (6 étapes, voir plus bas).
 
-**Prochaine direction** : transformer le bot mono-métier en **cœur commun +
-modules activables par client** — voir [`coeur-et-modules.md`](./coeur-et-modules.md).
-6 étapes, de la moins risquée (créer `src/features.ts`) à la plus intégrée
-(Mini App pilotée par la config), avec un test final « boutique vêtements fictive »
-pour valider que le cœur ne bouge pas.
+**Modularisation « cœur + modules » : terminée** (6 étapes, section dédiée plus
+bas) — voir [`coeur-et-modules.md`](./coeur-et-modules.md). Le bot est piloté par
+`src/features.ts` (`CLIENT_ID`, défaut `pizzeria`) ; un client « retrait
+boutique » fictif (`boutique-demo`) passe le parcours complet sans que le cœur
+soit modifié.
 
 Bot de test : **@Testshopa1bot** (token dans `.env`, non commité).
 `ADMIN_IDS=786545252` (compte de l'utilisateur).
 
-Vérification : `npm run typecheck` (0 erreur) + `npm run smoke` (**58 checks OK**,
-voir `scripts/`). Certains rendus visuels restent à confirmer sur le téléphone.
+Vérification : `npm run typecheck` (0 erreur) + `npm run smoke` (**58 checks OK**)
++ `npm run test:boutique` (**15 checks OK**), voir `scripts/`. Certains rendus
+visuels restent à confirmer sur le téléphone.
 
 ---
 
@@ -195,7 +196,18 @@ pizzeria ne bouge pas.
    Front : `FeaturesContext` chargé une fois par `App`, onglets Tournées /
    Clients conditionnels (`deliverySlots` / `reliability`), libellé variantes =
    `features.variants.label`. +2 checks smoke (`/api/features`).
-6. ⬜ Test : client fictif « boutique vêtements, retrait, sans tournées ».
+6. ✅ **Validation de l'hypothèse** — `src/features.ts` devient un registre
+   (`CLIENT_ID`, défaut `pizzeria`) + entrée `boutique-demo` (retrait, sans
+   tournées, sans fiabilité). `db.ts` accepte `DB_PATH`. `index.ts` charge
+   `dotenv` avant `db` / `features`. `scripts/boutique.mts` (`npm run
+   test:boutique`, **15/15**) : parcours complet catalogue → panier → commande
+   sans adresse → `renderOrderText` → dashboard, **base isolée, sans toucher
+   `catalog.ts` / `cart.ts` / `orderFlow.ts`**. Seuls fichiers modifiés pour ce
+   client : `features.ts` (une entrée de registre).
+
+**Chantier terminé.** Le cœur (`catalog.ts`, `cart.ts`, `orderFlow.ts`,
+`sessionStore.ts`, `messageTemplates.ts`) n'a pas été modifié. Adapter un
+nouveau métier = ajouter une entrée à `src/features.ts` + `web/`… rien d'autre.
 
 ---
 

@@ -16,16 +16,20 @@ Ce README couvre l'architecture et l'installation.
   s'affiche en message image et remplace le message precedent) ;
 - ajout au panier **avec quantite** (scene telegraf) ;
 - **recapitulatif** du panier + **modification ligne par ligne** (- / + / supprimer) ;
-- **checkout** (5 etapes) : adresse -> telephone -> **creneau** -> **precision de
-  livraison** (etage/code, optionnelle) -> confirmation. Commande **persistee** (SQLite),
-  deja rattachee a sa tournee, panier vide. Adresse / numero / precision de la
-  derniere commande proposes en un clic. A la validation, les produits devenus
-  indisponibles / re-tarifes sont signales avant de confirmer ;
+- **checkout** dont les etapes dependent de `src/features.ts` : adresse ->
+  telephone -> **creneau** -> **precision de livraison** (etage/code) ->
+  confirmation. Chaque etape desactivee est sautee et l'entete "Etape X/N" se
+  recalcule. Commande **persistee** (SQLite), deja rattachee a sa tournee, panier
+  vide. Adresse / numero / precision de la derniere commande proposes en un clic.
+  A la validation, les produits devenus indisponibles / re-tarifes sont signales
+  avant de confirmer ;
 - `/mes_commandes` : historique client (lecture simple) ;
 - **mini-admin dans le bot** : `/admin` (tableau de bord + boutons de transition de
   statut). Chaque changement de statut **notifie le client** (le bot devient bidirectionnel) ;
 - **Mini App admin** (React, `web/`) servie par le serveur HTTP du bot. Auth =
-  validation de l'`initData` Telegram (HMAC) + verification `ADMIN_IDS`. Quatre onglets :
+  validation de l'`initData` Telegram (HMAC) + verification `ADMIN_IDS`. Les onglets
+  affiches dependent de `src/features.ts` (Tournees si `deliverySlots`, Clients si
+  `reliability`), via `GET /api/features` :
   - *Commandes* : **tableau de bord** (CA du jour, alertes commandes en attente, tournees
     en cours) + liste, filtres, detail, changement de statut, **modification de la commande**
     (articles / adresse / creneau), tel cliquable, message libre (+ modeles) ;
@@ -70,11 +74,12 @@ se greffe sans reecrire l'existant.
 
 | Fichier | Role |
 |---|---|
+| `src/features.ts` | **Config metier** du client actif (registre + `CLIENT_ID`). Pilote les etapes du checkout, les tables creees, les onglets de la Mini App. Seul fichier a toucher pour un nouveau metier. |
 | `menu.json` (racine) | **Contenu initial** du catalogue : seme la base au 1er demarrage, plus utilise ensuite. |
 | `data/bot.db` | Base SQLite locale (ignoree par git). Cree automatiquement au 1er lancement. |
 | `src/catalog.ts` | Catalogue en base : `getMenu()` (menu filtre pour le bot) + CRUD (Mini App). |
 | `src/uploads.ts` | Images produits sur disque (`data/uploads/`), decode base64 / suppression. |
-| `src/db.ts` | Connexion SQLite + 9 tables (`orders`, `categories`, `products`, `product_variants`, `routes`, `route_templates`, `sessions`, `customers`, `message_templates`). |
+| `src/db.ts` | Connexion SQLite (`DB_PATH`) + tables (`orders`, `categories`, `products`, `product_variants`, `sessions`, `customers`, `message_templates` ; `routes` / `route_templates` seulement si `features.deliverySlots.enabled`). |
 | `src/orders.ts` | Requetes sur `orders`. Une commande = donnee **definitive**. |
 | `src/customers.ts` | Fiche client consolidee + taux de fiabilite (calcule depuis `orders`). |
 | `src/orderFlow.ts` | Cycle de vie d'une commande : `changeStatus()`, transitions, notifications client (hors UI). |
@@ -88,7 +93,7 @@ se greffe sans reecrire l'existant.
 | `src/views.ts` | Transforme (menu, panier) en `{ text, keyboard }`. N'envoie rien. |
 | `src/callbacks.ts` | `callback_data` structurees (`nav:cat:pizzas`...) + parsing. Un seul listener generique. |
 | `src/scenes/quantity.ts` | Scene simple (BaseScene) : attend une quantite. |
-| `src/scenes/checkout.ts` | WizardScene 5 etapes : adresse -> tel -> creneau -> precision -> confirmation (+ reconcile panier). |
+| `src/scenes/checkout.ts` | WizardScene : adresse -> tel -> creneau -> precision -> confirmation (etapes sautees selon `features.ts`, + reconcile panier). |
 | `src/admin.ts` | Mini-admin : `/admin`, transitions de statut, **notifications sortantes** vers le client. |
 | `src/index.ts` | Cablage : middlewares, commandes, listener generique, `render()`, `setMyCommands`. |
 
@@ -109,8 +114,9 @@ Pour connaitre son id : commande `/id` du bot, ou [@userinfobot](https://t.me/us
 
 ### Schema base de donnees (V1)
 
-`orders` : `id`, `user_id`, `username`, `phone`, `items` (JSON), `address`,
-`total`, `status` (`pending` par defaut), `route_id` (rempli plus tard), `created_at`.
+`orders` : `id`, `user_id`, `username`, `phone` (nullable), `items` (JSON),
+`address` (nullable — retrait boutique), `total`, `status` (`pending` par defaut),
+`route_id`, `created_at` (+ colonnes ajoutees par les briques suivantes).
 
 ## Prerequis
 
