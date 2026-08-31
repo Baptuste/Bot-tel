@@ -1,20 +1,20 @@
 /**
- * Les "vues" du bot client : a partir des donnees (menu, panier), on produit un
- * couple { text, keyboard } pret a etre affiche. `render()` (index.ts) decide
- * d'editer le message existant ou d'en envoyer un neuf.
+ * Les "vues" du bot client : a partir des donnees (menu, panier), on produit
+ * soit un couple { text, keyboard }, soit une carte-image { photo, caption,
+ * keyboard }. `render()` (index.ts) decide d'editer ou de renvoyer.
  *
- * Rendu : parse_mode HTML. Identite visuelle "carte / ticket de caisse" —
- * cartouche monospace en tete de la carte, descriptions en blockquote, panier
- * et recap en bloc <pre> aligne (echo du docket de la Mini App).
+ * Identite visuelle : les ecrans principaux (carte d'une categorie, panier)
+ * sont des IMAGES generees (src/render/cards.ts) — c'est la seule facon d'avoir
+ * une vraie identite sur Telegram. Le texte HTML sert de complement / repli.
  *
- * REGLE : toute chaine dynamique (libelle produit, description, adresse...) passe
- * par esc() avant d'entrer dans le HTML. Un `<` non echappe casse tout le message.
+ * REGLE : toute chaine dynamique dans du HTML passe par esc().
  */
 import { Markup } from 'telegraf';
 import { CB } from './callbacks';
 import { cartTotal, getCart, lineKey } from './cart';
 import { getMenu } from './catalog';
 import { features } from './features';
+import { menuPagePng } from './render/cards';
 import { imagePath } from './uploads';
 
 type InlineKeyboard = ReturnType<typeof Markup.inlineKeyboard>;
@@ -24,9 +24,9 @@ export interface View {
   keyboard: InlineKeyboard;
 }
 
-/** Vue avec photo : le detail d'un produit qui a une image. */
+/** Vue avec photo : chemin de fichier OU buffer PNG (carte generee). */
 export interface PhotoView {
-  photo: string; // chemin absolu du fichier
+  photo: string | Buffer;
   caption: string;
   keyboard: InlineKeyboard;
 }
@@ -122,29 +122,35 @@ export function categoriesView(): View {
   };
 }
 
-/** Ecran d'une categorie : produits listes (desc en blockquote) + grille. */
-export function categoryView(catId: string): View | null {
+/** Ecran d'une categorie : une page de carte generee (image) + grille. */
+export function categoryView(catId: string): AnyView | null {
   const cat = getMenu()[catId];
   if (!cat) return null;
   const entries = Object.entries(cat.items);
-
-  const list = entries
-    .map(([, item]) => {
-      const price = `${item.variants.length > 0 ? 'dès ' : ''}${item.price} €`;
-      const desc = item.description ? `\n<i>${esc(item.description)}</i>` : '';
-      return `<b>${esc(item.label)}</b>  ·  ${price}${desc}`;
-    })
-    .join('\n\n');
 
   const buttons = entries.map(([prodId, item]) =>
     Markup.button.callback(item.label, CB.product(catId, prodId)),
   );
 
+  const photo = menuPagePng({
+    category: cat.label,
+    items: entries.map(([, item]) => ({
+      label: item.label,
+      price: item.price,
+      fromPrice: item.variants.length > 0,
+      description: item.description,
+    })),
+  });
+
   return {
-    text: `${section(cat.label)}\n\n${list}`,
+    photo,
+    caption: `<b>${esc(cat.label)}</b> — touche un produit pour l'ajouter 👇`,
     keyboard: Markup.inlineKeyboard([
       ...chunk(buttons, 2),
-      [Markup.button.callback('⬅️ Retour à la carte', CB.home())],
+      [
+        Markup.button.callback('⬅️ La carte', CB.home()),
+        Markup.button.callback('🛒 Panier', CB.showCart()),
+      ],
     ]),
   };
 }

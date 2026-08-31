@@ -84,10 +84,12 @@ async function render(ctx: BotContext, view: AnyView): Promise<void> {
   }
 
   if (photo) {
-    await ctx.replyWithPhoto(
-      { source: view.photo },
-      { caption: view.caption, parse_mode: 'HTML', ...view.keyboard },
-    );
+    const src = Buffer.isBuffer(view.photo) ? { source: view.photo } : { source: view.photo };
+    await ctx.replyWithPhoto(src, {
+      caption: view.caption,
+      parse_mode: 'HTML',
+      ...view.keyboard,
+    });
   } else {
     await ctx.reply(view.text, { parse_mode: 'HTML', ...view.keyboard });
   }

@@ -34,7 +34,8 @@ import { getCustomer, upsertCustomer } from '../customers';
 import { createOrder, getLastOrder, getOrder } from '../orders';
 import { getAvailableSlots, hasUpcomingSlots, type Slot } from '../routes';
 import { features } from '../features';
-import { esc, receiptBlock } from '../views';
+import { esc } from '../views';
+import { orderTicketPng, receiptPng } from '../render/cards';
 
 export const CHECKOUT_SCENE_ID = 'checkout';
 
@@ -388,11 +389,7 @@ function loyaltyLine(uid: number): string {
     : '';
 }
 
-/**
- * Recap sous forme de ticket monospace (<pre>), en echo du docket de la Mini App.
- * Tout ce qui est variable (adresse en texte libre incluse) vit DANS le bloc <pre>
- * (echappe par receiptBlock) -> impossible de casser le HTML du message.
- */
+/** Recap : un ticket de caisse (image generee), en echo du docket de la Mini App. */
 async function promptConfirm(ctx: BotContext): Promise<void> {
   const uid = userId(ctx);
   const lines = getCart(uid);
@@ -402,22 +399,30 @@ async function promptConfirm(ctx: BotContext): Promise<void> {
   const ref = features.referral.enabled ? previewReferral(uid, subtotal) : null;
   const total = subtotal - (ref?.discount ?? 0);
 
-  const footer = [
-    ...(s.address ? [`📍 ${s.address}`] : []),
-    ...(s.phone ? [`📞 ${s.phone}`] : []),
-    ...(features.deliverySlots.enabled ? [`🕒 ${s.slotLabel ?? 'au plus tôt'}`] : []),
-    ...(s.deliveryNote ? [`📝 ${s.deliveryNote}`] : []),
+  const footerLines = [
+    ...(s.address ? [s.address] : []),
+    ...(s.phone ? [s.phone] : []),
+    ...(features.deliverySlots.enabled ? [`Créneau : ${s.slotLabel ?? 'au plus tôt'}`] : []),
+    ...(s.deliveryNote ? [s.deliveryNote] : []),
     paymentLine(),
   ];
-  const loyalty = loyaltyLine(uid).trim();
 
-  await ctx.reply(
-    `${stepHeader('confirm', 'Récapitulatif')}\n\n` +
-      receiptBlock(lines, total, { beforeTotal: ref?.lines ?? [], footer }) +
-      '\n\n' +
-      (loyalty ? `${loyalty}\n\n` : '') +
-      'On valide ?',
+  const png = receiptPng({
+    title: 'Récapitulatif',
+    items: lines,
+    discounts: ref && ref.discount > 0 ? [{ label: 'Parrainage', amount: ref.discount }] : [],
+    total,
+    footerLines,
+  });
+
+  const loyalty = loyaltyLine(uid).trim();
+  const caption =
+    stepHeader('confirm', 'Récapitulatif') + (loyalty ? `\n${loyalty}` : '') + '\n\nTout est bon ?';
+
+  await ctx.replyWithPhoto(
+    { source: png },
     {
+      caption,
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard([
         [Markup.button.callback('✅ Confirmer la commande', 'order:confirm')],
@@ -449,7 +454,8 @@ confirmStep.action('order:confirm', async (ctx) => {
   const missingInfo =
     (features.requiresAddress && !address) || (features.requiresPhone && !phone);
   if (lines.length === 0 || missingInfo) {
-    await ctx.editMessageText(
+    await ctx.deleteMessage().catch(() => undefined); // le recap est une photo
+    await ctx.reply(
       removed.length > 0
         ? 'Ton panier est vide après le retrait des produits indisponibles. Tape /start pour recommencer.'
         : 'Commande impossible (panier vide ou infos manquantes). Tape /start pour recommencer.',
@@ -496,18 +502,15 @@ confirmStep.action('order:confirm', async (ctx) => {
     }
   }
 
-  const recapLines = [
-    `Statut : ${statusLabel(initialStatusId())}`,
-    ...(ref && ref.discount > 0
-      ? [`Réduction parrainage : −${ref.discount} € (payé ${total} €)`]
-      : []),
+  const ticketLines = [
+    ...(ref && ref.discount > 0 ? [`Payé : ${total} € (−${ref.discount} € parrainage)`] : []),
     ...(features.deliverySlots.enabled ? [`Créneau : ${slotLabel ?? 'au plus tôt'}`] : []),
+    "On te prévient dès qu'elle est confirmée.",
   ];
-  await ctx.editMessageText(
-    `<b>✓ Commande #${orderId} enregistrée</b>\n\n` +
-      `${esc(recapLines.join('\n'))}\n\n` +
-      "On te prévient dès qu'elle est confirmée. Merci ! 🙏",
-    { parse_mode: 'HTML' },
+  await ctx.deleteMessage().catch(() => undefined); // le recap etait une photo
+  await ctx.replyWithPhoto(
+    { source: orderTicketPng(orderId, statusLabel(initialStatusId()), ticketLines) },
+    { caption: `<b>✓ Commande #${orderId} enregistrée.</b> Merci ! 🙏`, parse_mode: 'HTML' },
   );
   await ctx.scene.leave();
 
@@ -518,7 +521,8 @@ confirmStep.action('order:confirm', async (ctx) => {
 
 confirmStep.action('order:cancel', async (ctx) => {
   await ctx.answerCbQuery('Commande abandonnée');
-  await ctx.editMessageText('Commande abandonnée. Ton panier est conservé.');
+  await ctx.deleteMessage().catch(() => undefined); // le recap est une photo
+  await ctx.reply('Commande abandonnée. Ton panier est conservé.');
   await ctx.scene.leave();
 });
 
