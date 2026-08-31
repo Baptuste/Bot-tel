@@ -30,7 +30,13 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `HTTP ${res.status}`);
+    const err = new Error(body.error ?? `HTTP ${res.status}`) as Error & {
+      status?: number;
+      info?: unknown;
+    };
+    err.status = res.status;
+    err.info = body;
+    throw err;
   }
   return (await res.json()) as T;
 }

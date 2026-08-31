@@ -6,6 +6,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { shop } from './api';
 import { Cart } from './Cart';
 import { Catalog } from './Catalog';
+import { Checkout } from './Checkout';
+import { OrderSent } from './OrderSent';
 import { Product } from './Product';
 import { alertDialog, haptic } from '../telegram';
 import type { CartDto, Menu, ShopConfig } from './types';
@@ -15,7 +17,10 @@ type Screen =
   | { name: 'product'; catId: string; prodId: string }
   | { name: 'cart' }
   | { name: 'checkout' }
+  | { name: 'sent'; orderId: number }
   | { name: 'orders' };
+
+const EMPTY_CART: CartDto = { lines: [], total: 0, count: 0 };
 
 export function ClientApp() {
   const [data, setData] = useState<{ menu: Menu; config: ShopConfig } | null>(null);
@@ -67,6 +72,20 @@ export function ClientApp() {
     [run],
   );
 
+  const onItemsChanged = useCallback(
+    (removed: string[]) => {
+      haptic('warning');
+      shop.cart().then(setCart).catch(() => {});
+      alertDialog(
+        removed.length > 0
+          ? `Plus disponible, retiré du panier : ${removed.join(', ')}. Vérifie et renvoie.`
+          : 'Ton panier a changé, vérifie-le avant de commander.',
+      );
+      setScreen({ name: 'cart' });
+    },
+    [],
+  );
+
   if (error) return <div className="error">Chargement impossible : {error}</div>;
   if (!data) return <p className="muted">Chargement…</p>;
   const { menu, config } = data;
@@ -95,9 +114,35 @@ export function ClientApp() {
         menu={menu}
         busy={busy}
         onSetQty={setQty}
-        onCheckout={() => alertDialog('Checkout — étape suivante du chantier.')}
+        onCheckout={() => setScreen({ name: 'checkout' })}
         onBack={() => setScreen({ name: 'catalog' })}
       />
+    );
+  }
+
+  if (screen.name === 'checkout') {
+    if (cart.lines.length === 0) {
+      setScreen({ name: 'catalog' });
+      return null;
+    }
+    return (
+      <Checkout
+        config={config}
+        cart={cart}
+        onDone={(orderId) => {
+          setCart(EMPTY_CART);
+          haptic('success');
+          setScreen({ name: 'sent', orderId });
+        }}
+        onItemsChanged={onItemsChanged}
+        onBack={() => setScreen({ name: 'cart' })}
+      />
+    );
+  }
+
+  if (screen.name === 'sent') {
+    return (
+      <OrderSent orderId={screen.orderId} onOrders={() => setScreen({ name: 'orders' })} />
     );
   }
 

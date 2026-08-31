@@ -1101,6 +1101,110 @@ textarea {
   padding: 0;
 }
 
+/* --- Checkout client --- */
+.co {
+  gap: var(--s-4);
+}
+.co__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.co__label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--hint);
+}
+.co input,
+.co textarea {
+  width: 100%;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--text);
+  padding: 11px 12px;
+  font: inherit;
+}
+.co textarea {
+  resize: vertical;
+  min-height: 44px;
+}
+.co input:focus,
+.co textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.co__slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.co__hint {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--hint);
+}
+.co__err {
+  margin: 0;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--accent);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.co__recap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  border-top: 2px dashed var(--line-strong);
+  padding-top: var(--s-3);
+}
+.co__recap-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: var(--fs-1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Confirmation d'envoi --- */
+.sent {
+  align-items: center;
+  text-align: center;
+  gap: var(--s-3);
+  padding-top: var(--s-8, 48px);
+}
+.sent__mark {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 700;
+}
+.sent__title {
+  font-size: var(--fs-1);
+  font-weight: 600;
+  margin: 0;
+}
+.sent__text {
+  margin: 0;
+  color: var(--hint);
+  font-size: var(--fs-base);
+  max-width: 32ch;
+}
+.sent .linkback {
+  align-self: center;
+  margin-top: var(--s-2);
+}
+
 .template-edit-actions {
   display: flex;
   gap: var(--s-1);
