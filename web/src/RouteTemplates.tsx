@@ -15,7 +15,12 @@ interface Props {
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export function RouteTemplates({ templates, drivers, busy, onChange }: Props) {
-  const withDrivers = useFeatures().deliverySlots.drivers;
+  const deliverySlots = useFeatures().deliverySlots;
+  const withDrivers = deliverySlots.drivers;
+  const capHint =
+    deliverySlots.capacityLimit != null
+      ? `Capacite max (defaut : ${deliverySlots.capacityLimit})`
+      : 'Capacite max (optionnel)';
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState('');
   const [time, setTime] = useState('');
@@ -135,7 +140,7 @@ export function RouteTemplates({ templates, drivers, busy, onChange }: Props) {
               inputMode="numeric"
               value={capacity}
               onChange={(e) => setCapacity(e.target.value)}
-              placeholder="Capacite max (optionnel)"
+              placeholder={capHint}
             />
             {withDrivers && (
               <div style={{ marginTop: 6 }}>

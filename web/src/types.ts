@@ -1,4 +1,18 @@
-export type OrderStatus = 'pending' | 'confirmed' | 'delivering' | 'delivered' | 'cancelled';
+/** Un statut = un id d'étape de `features.orderFlow`. */
+export type OrderStatus = string;
+
+export type StageRole = 'placed' | 'accepted' | 'fulfilling' | 'fulfilled' | 'cancelled';
+
+export interface OrderStage {
+  id: string;
+  role: StageRole;
+  label: string;
+  shortLabel?: string;
+  advanceLabel?: string;
+  arrivalMessage?: string;
+  cancelLabel?: string;
+  cancelMessage?: string;
+}
 
 /** Configuration metier du deploiement (miroir de `src/features.ts`, via /api/features). */
 export interface ClientFeatures {
@@ -7,11 +21,38 @@ export interface ClientFeatures {
   fulfillment: 'delivery' | 'pickup' | 'both';
   requiresAddress: boolean;
   requiresPhone: boolean;
-  deliverySlots: { enabled: boolean; drivers: boolean };
+  deliverySlots: { enabled: boolean; drivers: boolean; capacityLimit: number | null };
   deliveryNote: { enabled: boolean; label: string };
   variants: { enabled: boolean; label: string };
   payment: { methods: Array<'cash' | 'card'>; tipEnabled: boolean };
   reliability: { enabled: boolean };
+  messaging: { templatesEnabled: boolean };
+  loyalty: {
+    enabled: boolean;
+    pointsPerOrder: number;
+    rewardThreshold: number;
+    rewardLabel: string;
+  };
+  referral: { enabled: boolean; filleulDiscount: number; parrainReward: number };
+  orderFlow: { stages: OrderStage[] };
+}
+
+export interface ReferralInfo {
+  code: string;
+  filleulDiscount: number;
+  parrainReward: number;
+  pendingAsFilleul: boolean;
+  filleulsCompleted: number;
+  creditAvailable: number;
+}
+
+export interface LoyaltyStatus {
+  points: number;
+  pointsPerOrder: number;
+  threshold: number;
+  rewardLabel: string;
+  rewardsAvailable: number;
+  toNextReward: number;
 }
 
 export interface CartLine {
@@ -45,7 +86,10 @@ export interface OrderCustomerInfo {
   name: string | null;
   blocked: boolean;
   delivery_note: string | null;
-  reliability: ReliabilitySummary;
+  /** null si le module fiabilité est désactivé pour ce client. */
+  reliability: ReliabilitySummary | null;
+  /** null si le module fidélité est désactivé. */
+  loyalty: { rewardsAvailable: number } | null;
 }
 
 export interface Order {
@@ -62,6 +106,7 @@ export interface Order {
   cancellation_reason: string | null;
   no_show: boolean;
   delivery_note: string | null;
+  referral_discount: number | null;
   customer: OrderCustomerInfo;
   created_at: string;
   next: StatusOption[];
@@ -82,8 +127,8 @@ export interface Customer {
 
 export interface CustomerSummary extends Customer {
   total_orders: number;
-  delivered: number;
-  no_show: number;
+  /** null si le module fiabilité est désactivé. */
+  reliability: ReliabilitySummary | null;
 }
 
 export interface Reliability {
@@ -117,9 +162,9 @@ export interface Dashboard {
 }
 
 /** Libelle court de fiabilite pour un badge. null si rien a signaler. */
-export function reliabilityBadge(r: ReliabilitySummary, blocked: boolean): string | null {
+export function reliabilityBadge(r: ReliabilitySummary | null, blocked: boolean): string | null {
   if (blocked) return '🚫 bloqué';
-  if (r.noShow > 0) {
+  if (r && r.noShow > 0) {
     const pct = r.rate === null ? '' : ` ${Math.round(r.rate * 100)}%`;
     return `⚠️ ${r.noShow} no-show${pct}`;
   }
@@ -215,10 +260,3 @@ export function slotText(route: OrderRouteInfo | null): string {
   return `${route.label} (${day})`;
 }
 
-export const STATUS_LABEL: Record<OrderStatus, string> = {
-  pending: 'En attente',
-  confirmed: 'Confirmee',
-  delivering: 'En livraison',
-  delivered: 'Livree',
-  cancelled: 'Annulee',
-};

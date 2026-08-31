@@ -1,11 +1,12 @@
 /**
  * Fiche client consolidee (table `customers`, 1 ligne par user_id Telegram).
+ * Fait partie du COEUR : aucune notion de metier ici.
  *
  * - Cree / mise a jour a chaque commande (`upsertCustomer`) : username, tel, adresse.
  * - `name`, `delivery_note`, `notes`, `blocked` : edites par l'admin (Mini App).
- * - Le TAUX DE FIABILITE est CALCULE depuis `orders` (jamais stocke, pas de drift) :
- *   livrees vs no-show (annulation imputee au client). Les annulations legitimes
- *   (rupture de stock...) ne comptent pas contre le client.
+ *
+ * Le calcul du taux de fiabilite (livrees vs no-show) vit dans le module
+ * `modules/reliability.ts`, active seulement si `features.reliability.enabled`.
  */
 import { db } from './db';
 
@@ -24,16 +25,6 @@ export interface Customer {
 
 interface CustomerRow extends Omit<Customer, 'blocked'> {
   blocked: number;
-}
-
-export interface Reliability {
-  total: number;
-  delivered: number;
-  noShow: number;
-  cancelledOther: number;
-  active: number;
-  /** livrees / (livrees + no-show), ou null si le client n'a encore aucune des deux. */
-  rate: number | null;
 }
 
 const q = {
@@ -71,20 +62,9 @@ const q = {
   `),
   list: db.prepare(`
     SELECT c.*,
-      (SELECT COUNT(*)           FROM orders o WHERE o.user_id = c.user_id) AS total_orders,
-      (SELECT SUM(o.status = 'delivered') FROM orders o WHERE o.user_id = c.user_id) AS delivered,
-      (SELECT SUM(o.no_show = 1) FROM orders o WHERE o.user_id = c.user_id) AS no_show
+      (SELECT COUNT(*) FROM orders o WHERE o.user_id = c.user_id) AS total_orders
     FROM customers c
     ORDER BY c.updated_at DESC
-  `),
-  reliability: db.prepare<[number]>(`
-    SELECT
-      COUNT(*)                                                    AS total,
-      COALESCE(SUM(status = 'delivered'), 0)                      AS delivered,
-      COALESCE(SUM(no_show = 1), 0)                               AS noShow,
-      COALESCE(SUM(status = 'cancelled' AND no_show = 0), 0)      AS cancelledOther,
-      COALESCE(SUM(status IN ('pending','confirmed','delivering')), 0) AS active
-    FROM orders WHERE user_id = ?
   `),
 };
 
@@ -132,31 +112,13 @@ export function updateCustomer(
   return getCustomer(userId);
 }
 
-export function getReliability(userId: number): Reliability {
-  const r = q.reliability.get(userId) as {
-    total: number;
-    delivered: number;
-    noShow: number;
-    cancelledOther: number;
-    active: number;
-  };
-  const judged = r.delivered + r.noShow;
-  return { ...r, rate: judged > 0 ? r.delivered / judged : null };
-}
-
 export interface CustomerSummary extends Customer {
   total_orders: number;
-  delivered: number;
-  no_show: number;
 }
 
 export function listCustomers(): CustomerSummary[] {
-  return (q.list.all() as Array<CustomerRow & { total_orders: number; delivered: number | null; no_show: number | null }>).map(
-    (row) => ({
-      ...toCustomer(row),
-      total_orders: row.total_orders,
-      delivered: row.delivered ?? 0,
-      no_show: row.no_show ?? 0,
-    }),
-  );
+  return (q.list.all() as Array<CustomerRow & { total_orders: number }>).map((row) => ({
+    ...toCustomer(row),
+    total_orders: row.total_orders,
+  }));
 }

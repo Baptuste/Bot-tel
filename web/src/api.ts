@@ -6,8 +6,10 @@ import type {
   CustomerSummary,
   Dashboard,
   Driver,
+  LoyaltyStatus,
   MessageTemplate,
   Order,
+  ReferralInfo,
   Product,
   Reliability,
   Route,
@@ -226,9 +228,13 @@ export const api = {
     list: () => request<{ customers: CustomerSummary[] }>('/customers'),
 
     get: (userId: number) =>
-      request<{ customer: Customer; reliability: Reliability; orders: Order[] }>(
-        `/customers/${userId}`,
-      ),
+      request<{
+        customer: Customer;
+        reliability: Reliability | null;
+        loyalty: LoyaltyStatus | null;
+        referral: ReferralInfo | null;
+        orders: Order[];
+      }>(`/customers/${userId}`),
 
     update: (
       userId: number,
@@ -238,5 +244,8 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify(patch),
       }),
+
+    redeemLoyalty: (userId: number) =>
+      request<{ loyalty: LoyaltyStatus }>(`/customers/${userId}/loyalty/redeem`, { method: 'POST' }),
   },
 };

@@ -1,6 +1,7 @@
 import { api } from './api';
+import { useFlow } from './features';
 import { confirmDialog, promptDialog } from './telegram';
-import { STATUS_LABEL, type Order, type RouteStatus } from './types';
+import { type Order, type RouteStatus } from './types';
 
 interface Props {
   routeId: number;
@@ -13,12 +14,14 @@ interface Props {
 }
 
 export function RouteOrderRow({ routeId, routeStatus, order: o, index, count, busy, run }: Props) {
-  const active = o.status === 'confirmed' || o.status === 'delivering' || o.status === 'pending';
+  const flow = useFlow();
+  const active = flow.openIds().includes(o.status);
   const canReorder = routeStatus !== 'done' && active;
+  const atFulfilling = flow.role(o.status) === 'fulfilling';
 
   async function markDelivered() {
     if (await confirmDialog(`Commande #${o.id} livrée ?\nLe client (et les suivants) seront notifiés.`)) {
-      await run(() => api.setStatus(o.id, 'delivered'));
+      await run(() => api.setStatus(o.id, flow.roleId('fulfilled')!));
     }
   }
 
@@ -26,7 +29,9 @@ export function RouteOrderRow({ routeId, routeStatus, order: o, index, count, bu
     const reason = promptDialog(`Souci sur la commande #${o.id} — raison ?`);
     if (reason === null) return; // annulé
     const noShow = await confirmDialog('Imputer au client (compte comme no-show) ?');
-    await run(() => api.setStatus(o.id, 'cancelled', { reason: reason.trim() || undefined, no_show: noShow }));
+    await run(() =>
+      api.setStatus(o.id, flow.roleId('cancelled')!, { reason: reason.trim() || undefined, no_show: noShow }),
+    );
   }
 
   return (
@@ -37,7 +42,7 @@ export function RouteOrderRow({ routeId, routeStatus, order: o, index, count, bu
           <span className="muted">- {o.username ? `@${o.username}` : o.user_id}</span>
         </div>
         <div className="muted small">
-          {o.total} EUR - {STATUS_LABEL[o.status]} - {o.address ?? 'retrait boutique'}
+          {o.total} EUR - {flow.label(o.status)} - {o.address ?? 'retrait boutique'}
         </div>
       </div>
 
@@ -71,7 +76,7 @@ export function RouteOrderRow({ routeId, routeStatus, order: o, index, count, bu
           </button>
         )}
 
-        {routeStatus === 'started' && o.status === 'delivering' && (
+        {routeStatus === 'started' && atFulfilling && (
           <>
             <button className="mini" disabled={busy} onClick={() => void markDelivered()}>
               📦 Livrée

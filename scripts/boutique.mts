@@ -1,14 +1,14 @@
 /**
- * Étape 6 du plan « cœur + modules » (docs/coeur-et-modules.md) :
- * valider l'hypothèse sur un client fictif « boutique de vêtements, retrait en
- * magasin, sans tournées » — configuré UNIQUEMENT via `src/features.ts`
- * (entrée `boutique-demo`), sans toucher une ligne de `catalog.ts` /
- * `orderFlow.ts` / `cart.ts`.
+ * Client fictif `boutique-demo` : commerce de proximité, RETRAIT en magasin,
+ * aucun module optionnel actif, machine à états `pending → confirmed → ready →
+ * collected` (pas d'étape « en livraison »). Tout est configuré via
+ * `src/features.ts` — le cœur (`catalog.ts` / `cart.ts` / `orderFlow.ts`) n'est
+ * pas touché.
  *
- *   npx tsx scripts/boutique.mts
+ *   npm run test:boutique
  *
- * Utilise une base isolée (`data/boutique-test.db`), recréée à chaque run. Ne
- * nécessite PAS le bot lancé (test purement in-process).
+ * Base isolée (`data/boutique-test.db`), recréée à chaque run. In-process : un
+ * faux `telegram` collecte les notifications au lieu de les envoyer.
  */
 import { existsSync, rmSync } from 'node:fs';
 
@@ -30,14 +30,23 @@ function check(label: string, ok: boolean): void {
   else fail++;
 }
 
+const sent: Array<{ chatId: number; text: string }> = [];
+const telegram = {
+  sendMessage: async (chatId: number, text: string) => {
+    sent.push({ chatId, text });
+  },
+} as unknown as import('telegraf').Telegram;
+
 const { features } = await import('../src/features.ts');
 const { db } = await import('../src/db.ts');
 const catalog = await import('../src/catalog.ts');
 const cart = await import('../src/cart.ts');
-const { createOrder, getOrder, getStatusCounts } = await import('../src/orders.ts');
-const { renderOrderText } = await import('../src/orderFlow.ts');
+const { createOrder, getOrder, getStatusCounts, updateOrderStatus } = await import('../src/orders.ts');
+const { renderOrderText, nextStatuses, changeStatus } = await import('../src/orderFlow.ts');
+const { orderStages, validateOrderFlow } = await import('../src/orderStages.ts');
 const { getDashboard } = await import('../src/dashboard.ts');
-const { upsertCustomer, getCustomer, getReliability } = await import('../src/customers.ts');
+const { upsertCustomer, getCustomer } = await import('../src/customers.ts');
+const { getReliability } = await import('../src/modules/reliability.ts');
 
 const USER = 990001;
 
@@ -45,37 +54,57 @@ try {
   // --- 1. Config active -------------------------------------------------
   check('features = boutique-demo', features.clientId === 'boutique-demo');
   check('  retrait, pas d\'adresse', features.fulfillment === 'pickup' && !features.requiresAddress);
-  check('  pas de tournees / fiabilite', !features.deliverySlots.enabled && !features.reliability.enabled);
+  check(
+    '  tournees / fiabilite / messages / variantes tous off',
+    !features.deliverySlots.enabled &&
+      !features.reliability.enabled &&
+      !features.messaging.templatesEnabled &&
+      !features.variants.enabled,
+  );
+  check(
+    '  machine a etats retrait : pending -> confirmed -> ready -> collected',
+    orderStages().map((s) => s.id).join(' ') === 'pending confirmed ready collected cancelled',
+  );
+  check('  aucune etape "delivering"', !orderStages().some((s) => s.id === 'delivering'));
 
-  // --- 2. Schema : les tables tournees n'existent pas -----------------
-  const routeTables = db
+  // --- 2. Schema : les tables des modules desactives n'existent pas ---
+  const absentTables = db
     .prepare(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('routes', 'route_templates')",
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('routes', 'route_templates', 'drivers', 'message_templates')",
     )
     .all() as Array<{ name: string }>;
-  check('tables routes / route_templates absentes', routeTables.length === 0);
+  check('tables routes / route_templates / drivers / message_templates absentes', absentTables.length === 0);
 
-  // --- 3. Catalogue (coeur inchange) ---------------------------------
-  const cat = catalog.createCategory('T-shirts');
-  const prod = catalog.createProduct({ category_id: cat.id, name: 'T-shirt uni', price: 0 });
+  // --- 3. Catalogue : variantes en base MAIS masquees (variants.enabled off) ---
+  const cat = catalog.createCategory('Pains');
+  const prod = catalog.createProduct({ category_id: cat.id, name: 'Baguette tradition', price: 15 });
   if (!prod) throw new Error('createProduct a renvoye null');
+  // On cree quand meme des variantes en base : le module etant off, elles ne
+  // doivent pas apparaitre cote client.
   catalog.createVariant(prod.id, { label: 'M', price: 19 });
   catalog.createVariant(prod.id, { label: 'L', price: 21 });
 
   const menu = catalog.reloadMenu();
   const menuItem = menu[String(cat.id)]?.items[String(prod.id)];
-  check('getMenu expose le produit + 2 tailles', !!menuItem && menuItem!.variants.length === 2);
+  check(
+    'getMenu : variantes masquees, produit traite comme simple (prix de base)',
+    !!menuItem && menuItem!.variants.length === 0 && menuItem!.price === 15,
+  );
+  check(
+    'listCatalog (editeur admin) : les variantes restent visibles',
+    catalog.listCatalog().variants.filter((v) => v.product_id === prod.id).length === 2,
+  );
 
   // --- 4. Panier (coeur inchange) ------------------------------------
   const { items, missing } = catalog.resolveMenuItems([
-    { catId: String(cat.id), prodId: String(prod.id), variantId: menuItem!.variants[1]!.id, qty: 2 },
+    { catId: String(cat.id), prodId: String(prod.id), qty: 2 },
   ]);
-  check('resolveMenuItems : 1 ligne, prix courant', missing === 0 && items.length === 1 && items[0]!.price === 21);
+  check('resolveMenuItems : 1 ligne au prix de base', missing === 0 && items.length === 1 && items[0]!.price === 15);
 
   for (const l of items) cart.addToCart(USER, l, l.qty);
   const { removed } = cart.reconcileCart(USER);
   check('reconcileCart : rien retire', removed.length === 0);
-  check('total panier = 42', cart.cartTotal(USER) === 42);
+  check('total panier = 30', cart.cartTotal(USER) === 30);
 
   // --- 5. Checkout « retrait » : ni adresse ni creneau -------------
   const orderId = createOrder({
@@ -103,6 +132,53 @@ try {
 
   // getReliability reste appelable meme si le module est off (juste pas affiche)
   check('getReliability : appelable, rate null', getReliability(USER).rate === null);
+
+  // Module fiabilite OFF : meme avec un no-show au compteur, `renderOrderText`
+  // (via customerFlag) n'ajoute jamais la ligne "Fiabilite".
+  updateOrderStatus(orderId, 'cancelled', { noShow: true });
+  const order3 = createOrder({
+    userId: USER,
+    username: 'boutiquetest',
+    phone: '06 11 22 33 44',
+    items,
+    total: 21,
+  });
+  const text3 = renderOrderText(getOrder(order3)!);
+  check('reliability OFF : pas de ligne "Fiabilite" dans le rendu commande', !/[Ff]iabilit/.test(text3));
+
+  // --- 6b. Transitions derivees de features.orderFlow ---
+  const seq = (id: string) => nextStatuses(id).map((s) => `${s.to}:${s.label}`).join(' | ');
+  check('nextStatuses(pending)', seq('pending') === 'confirmed:✅ Confirmer | cancelled:❌ Refuser');
+  check('nextStatuses(confirmed)', seq('confirmed') === 'ready:📦 Prete | cancelled:❌ Annuler');
+  check('nextStatuses(ready)', seq('ready') === 'collected:✅ Retiree | cancelled:❌ Souci');
+  check('nextStatuses(collected) = [] (terminal)', nextStatuses('collected').length === 0);
+  let badThrew = false;
+  try {
+    validateOrderFlow({ stages: [{ id: 'x', role: 'placed', label: 'x' }] });
+  } catch {
+    badThrew = true;
+  }
+  check('validateOrderFlow rejette une config incomplete', badThrew);
+
+  // --- 6c. Cycle de vie complet d'une commande RETRAIT ---
+  const life = createOrder({ userId: USER, username: 'boutiquetest', phone: '0600', items, total: 30 });
+  check('commande creee au statut initial "pending"', getOrder(life)!.status === 'pending');
+  await changeStatus(telegram, life, 'confirmed');
+  await changeStatus(telegram, life, 'ready');
+  const done = await changeStatus(telegram, life, 'collected');
+  check('cycle pending -> confirmed -> ready -> collected', done?.status === 'collected');
+  check('  horodatage de completion pose (role fulfilled)', getOrder(life)!.delivered_at !== null);
+  const msgs = sent.filter((m) => m.chatId === USER && m.text.includes(`#${life}`)).map((m) => m.text);
+  check(
+    '  le client a recu "confirmee", "prete", "retiree"',
+    msgs.some((t) => t.includes('est confirmee')) &&
+      msgs.some((t) => t.includes('est prete')) &&
+      msgs.some((t) => t.includes('a bien ete retiree')),
+  );
+  check(
+    '  "collected" compte comme une commande servie (dashboard + fiabilite)',
+    getDashboard().today.delivered >= 1,
+  );
 
   // --- 7. Le module tournees est importable mais inerte ----------
   const routes = await import('../src/routes.ts');

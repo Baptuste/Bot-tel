@@ -88,10 +88,14 @@ h1 {
   white-space: nowrap;
 }
 
-.badge.pending { background: #e2820a; }
-.badge.confirmed { background: #2f7bd6; }
-.badge.delivering { background: #7a3fd6; }
-.badge.delivered { background: #2c9e4b; }
+/* Statut de commande : couleur par role d'etape (features.orderFlow). */
+.badge[data-role='placed']     { background: #e2820a; }
+.badge[data-role='accepted']   { background: #2f7bd6; }
+.badge[data-role='fulfilling'] { background: #7a3fd6; }
+.badge[data-role='fulfilled']  { background: #2c9e4b; }
+.badge[data-role='cancelled']  { background: #b23b3b; }
+
+/* Statut de tournee (cycle distinct) + reutilisation de .badge.cancelled. */
 .badge.cancelled { background: #b23b3b; }
 .badge.planned { background: #6b7280; }
 .badge.started { background: #7a3fd6; }

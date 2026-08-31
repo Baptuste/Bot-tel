@@ -39,7 +39,9 @@ export function createServer(telegram: Telegram): express.Express {
   app.use('/api/catalog', catalogRouter());
   app.use('/api/customers', customersRouter());
   app.use('/api/dashboard', dashboardRouter());
-  app.use('/api/templates', templatesRouter()); // modeles de MESSAGES (pas les tournees)
+  if (features.messaging.templatesEnabled) {
+    app.use('/api/templates', templatesRouter()); // modeles de MESSAGES (pas les tournees)
+  }
 
   // Module tournees : monte seulement si le client l'a active. Pour un client en
   // retrait boutique, /api/routes n'existe pas (elle reference des tables

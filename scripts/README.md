@@ -47,3 +47,37 @@ bilan** (CA, livrées par livreur, top produits).
 
 In-process (faux `telegram` qui collecte les messages), base isolée
 `data/journee-test.db` recréée/supprimée à chaque run.
+
+## `creneaux.mts` — créneaux à capacité limitée
+
+```powershell
+npm run test:creneaux
+```
+
+Vérifie qu'un créneau plein disparaît des choix du client, que le nombre de
+places restantes est correct, et que la capacité par défaut du client
+(`features.deliverySlots.capacityLimit`) s'applique aux créneaux sans capacité
+propre. In-process, base isolée `data/creneaux-test.db`.
+
+## `loyalty.mts` — programme de fidélité
+
+```powershell
+npm run test:loyalty
+```
+
+Client `boutique-demo` (fidélité activée). Vérifie que les points sont crédités
+quand une commande atteint le rôle `fulfilled`, que le palier déclenche une
+notification client, et que `redeemReward` retire un palier du solde. In-process,
+base isolée `data/loyalty-test.db`.
+
+## `referral.mts` — parrainage
+
+```powershell
+npm run test:referral
+```
+
+Client `boutique-demo` (parrainage activé). Vérifie l'enregistrement d'un
+filleul (+ refus : auto-parrainage, code bidon, double enregistrement), la
+réduction appliquée à sa première commande, la création du crédit parrain et sa
+consommation (y compris partielle). In-process, base isolée
+`data/referral-test.db`.

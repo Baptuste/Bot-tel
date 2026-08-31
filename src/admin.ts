@@ -8,7 +8,8 @@ import { Markup, type Telegraf } from 'telegraf';
 import { config } from './config';
 import { userId, type BotContext } from './context';
 import { changeStatus, orderKeyboard, renderOrderText } from './orderFlow';
-import { getOpenOrders, getStatusCounts, STATUS_LABEL, type OrderStatus } from './orders';
+import { orderStages, stageById, statusLabel } from './orderStages';
+import { getOpenOrders, getStatusCounts, type OrderStatus } from './orders';
 import { markDelivered } from './routes';
 
 export function isAdmin(id: number): boolean {
@@ -22,13 +23,13 @@ export function registerAdmin(bot: Telegraf<BotContext>): void {
 
     const c = getStatusCounts();
     const open = getOpenOrders();
+    // Recap par etape du pipeline (s'adapte a features.orderFlow).
+    const countLines = orderStages()
+      .map((s) => `${s.label[0]!.toUpperCase()}${s.label.slice(1)} : ${c[s.id] ?? 0}`)
+      .join('\n');
     await ctx.reply(
       '📊 Tableau de bord\n\n' +
-        `En attente : ${c.pending ?? 0}\n` +
-        `Confirmees : ${c.confirmed ?? 0}\n` +
-        `En livraison : ${c.delivering ?? 0}\n` +
-        `Livrees : ${c.delivered ?? 0}\n` +
-        `Annulees : ${c.cancelled ?? 0}\n\n` +
+        `${countLines}\n\n` +
         (open.length > 0
           ? `${open.length} commande(s) a traiter (voir ci-dessous) :`
           : 'Aucune commande en cours. 🎉'),
@@ -51,14 +52,14 @@ export function registerAdmin(bot: Telegraf<BotContext>): void {
     const orderId = Number(ctx.match?.[1] ?? 0);
     const to = (ctx.match?.[2] ?? '') as OrderStatus;
 
-    // Passage a "livree" -> markDelivered gere aussi la progression de la tournee.
+    // Passage a l'etape finale -> markDelivered gere aussi la progression de la tournee.
     const order =
-      to === 'delivered'
+      stageById(to)?.role === 'fulfilled'
         ? await markDelivered(ctx.telegram, orderId)
         : await changeStatus(ctx.telegram, orderId, to);
 
     await ctx.answerCbQuery(
-      order ? `Commande #${orderId} : ${STATUS_LABEL[to] ?? to}` : 'Commande introuvable',
+      order ? `Commande #${orderId} : ${statusLabel(to)}` : 'Commande introuvable',
     );
 
     if (order) {

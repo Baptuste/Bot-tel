@@ -2,13 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from './api';
 import { Drivers } from './Drivers';
 import { DriverSelect } from './DriverSelect';
-import { useFeatures } from './features';
+import { useFeatures, useFlow } from './features';
 import { RouteOrderRow } from './RouteOrderRow';
 import { RouteTemplates } from './RouteTemplates';
 import { alertDialog, confirmDialog } from './telegram';
 import {
   ROUTE_STATUS_LABEL,
-  STATUS_LABEL,
   type Driver,
   type Order,
   type RouteTemplate,
@@ -18,7 +17,11 @@ import {
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function Routes() {
-  const withDrivers = useFeatures().deliverySlots.drivers;
+  const deliverySlots = useFeatures().deliverySlots;
+  const withDrivers = deliverySlots.drivers;
+  const defaultCap = deliverySlots.capacityLimit;
+  const flow = useFlow();
+  const effectiveCap = (r: RouteWithOrders) => r.max_capacity ?? defaultCap;
 
   const [templates, setTemplates] = useState<RouteTemplate[]>([]);
   const [routes, setRoutes] = useState<RouteWithOrders[]>([]);
@@ -162,6 +165,11 @@ export function Routes() {
             </strong>
             <span className={`badge ${r.status}`}>{ROUTE_STATUS_LABEL[r.status]}</span>
           </div>
+          <div className="muted small" style={{ marginBottom: 6 }}>
+            {r.orders.length}
+            {effectiveCap(r) != null ? ` / ${effectiveCap(r)} max` : ''} commande(s)
+            {effectiveCap(r) != null && r.orders.length >= effectiveCap(r)! ? ' — complet' : ''}
+          </div>
           {withDrivers && (
             <div className="muted small" style={{ marginBottom: 6 }}>
               Livreur : {r.driver?.name ?? 'non affecte'}
@@ -202,7 +210,7 @@ export function Routes() {
                   {assignable.map((o) => (
                     <div key={o.id} className="product">
                       <div>
-                        #{o.id} <span className="muted">- {STATUS_LABEL[o.status]} - {o.total} EUR</span>
+                        #{o.id} <span className="muted">- {flow.label(o.status)} - {o.total} EUR</span>
                         <div className="muted small">{o.address ?? 'retrait boutique'}</div>
                       </div>
                       <button

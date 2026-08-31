@@ -6,19 +6,20 @@
  * au moment de la validation, puis le panier est vide.
  */
 import { db } from './db';
+import {
+  editableStatusIds,
+  initialStatusId,
+  openStatusIds,
+  stageById,
+} from './orderStages';
 import type { CartLine } from './types';
 
-/** Statuts possibles d'une commande (V1). D'autres viendront avec les tournees. */
-export type OrderStatus = 'pending' | 'confirmed' | 'delivering' | 'delivered' | 'cancelled';
-
-/** Libelles lisibles (cote client et cote admin). */
-export const STATUS_LABEL: Record<OrderStatus, string> = {
-  pending: 'en attente de confirmation',
-  confirmed: 'confirmee',
-  delivering: 'en cours de livraison',
-  delivered: 'livree',
-  cancelled: 'annulee',
-};
+/**
+ * Le statut d'une commande est un id d'étape de `features.orderFlow` — donc une
+ * simple chaîne. Sa signification passe par le rôle de l'étape (`orderStages.ts`),
+ * jamais par une comparaison littérale.
+ */
+export type OrderStatus = string;
 
 export interface OrderRow {
   id: number;
@@ -31,6 +32,7 @@ export interface OrderRow {
   status: OrderStatus;
   route_id: number | null;
   route_position: number | null;
+  referral_discount: number | null; // remise parrainage appliquée (module referral)
   cancellation_reason: string | null;
   no_show: number;
   delivery_note: string | null;
@@ -53,6 +55,7 @@ export interface NewOrder {
   total: number;
   routeId?: number | null;
   deliveryNote?: string | null;
+  referralDiscount?: number | null;
 }
 
 const insertOrder = db.prepare<{
@@ -64,9 +67,13 @@ const insertOrder = db.prepare<{
   total: number;
   route_id: number | null;
   delivery_note: string | null;
+  status: string;
+  referral_discount: number | null;
 }>(`
-  INSERT INTO orders (user_id, username, phone, items, address, total, route_id, delivery_note, updated_at)
-  VALUES (@user_id, @username, @phone, @items, @address, @total, @route_id, @delivery_note, datetime('now'))
+  INSERT INTO orders
+    (user_id, username, phone, items, address, total, route_id, delivery_note, status, referral_discount, updated_at)
+  VALUES
+    (@user_id, @username, @phone, @items, @address, @total, @route_id, @delivery_note, @status, @referral_discount, datetime('now'))
 `);
 
 const selectOrder = db.prepare<[number]>('SELECT * FROM orders WHERE id = ?');
@@ -91,8 +98,13 @@ const updateCancellation = db.prepare<[string | null, number, number]>(
   'UPDATE orders SET cancellation_reason = ?, no_show = ? WHERE id = ?',
 );
 
+// Listes de statuts issues de `features.orderFlow` (statiques : figées au chargement).
+const OPEN_IDS = openStatusIds();
+const EDITABLE_IDS = editableStatusIds();
+const placeholders = (ids: readonly string[]) => ids.map(() => '?').join(', ');
+
 const selectOpenOrders = db.prepare(
-  "SELECT * FROM orders WHERE status IN ('pending', 'confirmed', 'delivering') ORDER BY created_at ASC",
+  `SELECT * FROM orders WHERE status IN (${placeholders(OPEN_IDS)}) ORDER BY created_at ASC`,
 );
 
 const countByStatus = db.prepare('SELECT status, COUNT(*) AS n FROM orders GROUP BY status');
@@ -122,7 +134,7 @@ const setRoutePosition = db.prepare<[number, number]>(
 );
 
 const selectAssignableOrders = db.prepare(
-  "SELECT * FROM orders WHERE route_id IS NULL AND status IN ('confirmed', 'pending') ORDER BY created_at ASC",
+  `SELECT * FROM orders WHERE route_id IS NULL AND status IN (${placeholders(EDITABLE_IDS)}) ORDER BY created_at ASC`,
 );
 
 const clearRouteFromOrders = db.prepare<[number]>(
@@ -133,7 +145,7 @@ function hydrate(row: OrderRow): Order {
   return { ...row, items: JSON.parse(row.items) as CartLine[], no_show: row.no_show === 1 };
 }
 
-/** Enregistre une nouvelle commande (statut "pending") et renvoie son id. */
+/** Enregistre une nouvelle commande (statut initial du pipeline) et renvoie son id. */
 export function createOrder(o: NewOrder): number {
   const info = insertOrder.run({
     user_id: o.userId,
@@ -144,6 +156,8 @@ export function createOrder(o: NewOrder): number {
     total: o.total,
     route_id: o.routeId ?? null,
     delivery_note: o.deliveryNote ?? null,
+    status: initialStatusId(),
+    referral_discount: o.referralDiscount ?? null,
   });
   return Number(info.lastInsertRowid);
 }
@@ -176,15 +190,16 @@ export function updateOrderStatus(
   meta?: CancellationMeta,
 ): Order | null {
   updateStatus.run(status, id);
-  if (status === 'delivered') stampDelivered.run(id);
-  if (status === 'cancelled') {
+  const role = stageById(status)?.role;
+  if (role === 'fulfilled') stampDelivered.run(id);
+  if (role === 'cancelled') {
     updateCancellation.run(meta?.reason?.trim() || null, meta?.noShow ? 1 : 0, id);
   }
   return getOrder(id);
 }
 
 /** Statuts sur lesquels l'admin peut encore modifier le contenu d'une commande. */
-export const EDITABLE_STATUSES: OrderStatus[] = ['pending', 'confirmed'];
+export const EDITABLE_STATUSES: OrderStatus[] = EDITABLE_IDS;
 
 const updateDetails = db.prepare<{
   id: number;
@@ -218,9 +233,9 @@ export function updateOrderDetails(
   return getOrder(id);
 }
 
-/** Commandes non terminees (pending / confirmed / delivering), plus ancienne d'abord. */
+/** Commandes non terminées (statuts « en cours »), plus ancienne d'abord. */
 export function getOpenOrders(): Order[] {
-  return (selectOpenOrders.all() as OrderRow[]).map(hydrate);
+  return (selectOpenOrders.all(...OPEN_IDS) as OrderRow[]).map(hydrate);
 }
 
 /** Nombre de commandes par statut : { pending: 2, delivered: 5, ... }. */
@@ -271,7 +286,7 @@ export function moveOrderInRoute(orderId: number, dir: 'up' | 'down'): void {
 
 /** Commandes affectables a une tournee : sans tournee, encore actives. */
 export function getAssignableOrders(): Order[] {
-  return (selectAssignableOrders.all() as OrderRow[]).map(hydrate);
+  return (selectAssignableOrders.all(...EDITABLE_IDS) as OrderRow[]).map(hydrate);
 }
 
 /** Detache toutes les commandes d'une tournee (avant suppression). */

@@ -91,15 +91,6 @@ db.exec(`
     updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
-  -- Modeles de messages : reponses pre-ecrites reutilisables par l'admin
-  -- ("on arrive", "rupture, on remplace par...", "leger retard"...).
-  CREATE TABLE IF NOT EXISTS message_templates (
-    id       INTEGER PRIMARY KEY AUTOINCREMENT,
-    label    TEXT    NOT NULL,
-    content  TEXT    NOT NULL,
-    position INTEGER NOT NULL DEFAULT 0
-  );
-
   -- Sessions : etat temporaire d'une conversation (scene en cours).
   -- A ne PAS confondre avec une commande (donnee definitive). Nettoyees par 3
   -- mecanismes : suppression a la sortie de scene, TTL a la lecture, purge planifiee.
@@ -179,6 +170,52 @@ function createDeliveryTables(): void {
 
 if (features.deliverySlots.enabled) createDeliveryTables();
 
+/** Table du module « messages pré-écrits » (`features.messaging.templatesEnabled`). */
+function createMessagingTables(): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS message_templates (
+      id       INTEGER PRIMARY KEY AUTOINCREMENT,
+      label    TEXT    NOT NULL,
+      content  TEXT    NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0
+    );
+  `);
+}
+
+if (features.messaging.templatesEnabled) createMessagingTables();
+
+/** Table du module « fidélité » (`features.loyalty.enabled`). */
+function createLoyaltyTable(): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS loyalty (
+      user_id    INTEGER PRIMARY KEY,
+      points     INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+}
+
+if (features.loyalty.enabled) createLoyaltyTable();
+
+/** Table du module « parrainage » (`features.referral.enabled`). */
+function createReferralTable(): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS referrals (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      parrain_id       INTEGER NOT NULL,
+      filleul_id       INTEGER NOT NULL UNIQUE,   -- un client n'est parrainé qu'une fois
+      status           TEXT    NOT NULL DEFAULT 'pending',  -- pending | completed
+      filleul_discount INTEGER NOT NULL DEFAULT 0,
+      parrain_reward   INTEGER NOT NULL DEFAULT 0,
+      reward_consumed  INTEGER NOT NULL DEFAULT 0,  -- le parrain a-t-il utilisé sa récompense
+      created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+      completed_at     TEXT
+    );
+  `);
+}
+
+if (features.referral.enabled) createReferralTable();
+
 ensureColumn('products', 'image', 'TEXT');
 ensureColumn('orders', 'cancellation_reason', 'TEXT');
 ensureColumn('orders', 'no_show', 'INTEGER NOT NULL DEFAULT 0');
@@ -187,6 +224,7 @@ ensureColumn('orders', 'route_position', 'INTEGER');
 ensureColumn('orders', 'updated_at', 'TEXT');
 ensureColumn('orders', 'delivered_at', 'TEXT');
 ensureColumn('orders', 'alerted', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('orders', 'referral_discount', 'INTEGER'); // module referral ; null si non concerné
 db.exec('UPDATE orders SET updated_at = created_at WHERE updated_at IS NULL');
 
 // Note : `orders.phone` / `orders.address` sont nullables dans le schema ci-dessus

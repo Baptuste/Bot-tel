@@ -2,13 +2,11 @@
  * API clients pour la Mini App admin (gestion clients + fiabilite).
  */
 import { Router } from 'express';
-import {
-  getCustomer,
-  getReliability,
-  listCustomers,
-  updateCustomer,
-  type Customer,
-} from '../customers';
+import { getCustomer, listCustomers, updateCustomer, type Customer } from '../customers';
+import { features } from '../features';
+import { loyaltyStatus, redeemReward } from '../modules/loyalty';
+import { getReliability, listReliability } from '../modules/reliability';
+import { referralInfo } from '../modules/referral';
 import { getOrdersByUser } from '../orders';
 import { requireAdmin } from './auth';
 
@@ -17,7 +15,14 @@ export function customersRouter(): Router {
   router.use(requireAdmin);
 
   router.get('/', (_req, res) => {
-    res.json({ customers: listCustomers() });
+    const customers = listCustomers();
+    const rel = features.reliability.enabled ? listReliability() : null;
+    res.json({
+      customers: customers.map((c) => ({
+        ...c,
+        reliability: rel?.get(c.user_id) ?? null,
+      })),
+    });
   });
 
   router.get('/:id', (req, res) => {
@@ -29,9 +34,25 @@ export function customersRouter(): Router {
     }
     res.json({
       customer,
-      reliability: getReliability(userId),
+      reliability: features.reliability.enabled ? getReliability(userId) : null,
+      loyalty: features.loyalty.enabled ? loyaltyStatus(userId) : null,
+      referral: features.referral.enabled ? referralInfo(userId) : null,
       orders: getOrdersByUser(userId),
     });
+  });
+
+  // L'admin applique une récompense fidélité (retire un palier du solde).
+  router.post('/:id/loyalty/redeem', (req, res) => {
+    if (!features.loyalty.enabled) {
+      res.status(404).json({ error: 'loyalty_disabled' });
+      return;
+    }
+    const userId = Number(req.params.id);
+    if (!redeemReward(userId)) {
+      res.status(409).json({ error: 'not_enough_points' });
+      return;
+    }
+    res.json({ loyalty: loyaltyStatus(userId) });
   });
 
   router.patch('/:id', (req, res) => {

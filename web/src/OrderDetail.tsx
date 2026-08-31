@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api } from './api';
+import { useFeatures, useFlow } from './features';
 import { MessageTemplates } from './MessageTemplates';
 import { OrderEdit } from './OrderEdit';
 import { alertDialog, confirmDialog, tg } from './telegram';
-import { reliabilityBadge, slotText, STATUS_LABEL, type Order } from './types';
-
-const EDITABLE = ['pending', 'confirmed'];
+import { reliabilityBadge, slotText, type Order } from './types';
 
 interface Props {
   order: Order;
@@ -14,6 +13,9 @@ interface Props {
 }
 
 export function OrderDetail({ order, onBack, onChanged }: Props) {
+  const withTemplates = useFeatures().messaging.templatesEnabled;
+  const flow = useFlow();
+  const editable = flow.editableIds().includes(order.status);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState(false);
@@ -97,20 +99,28 @@ export function OrderDetail({ order, onBack, onChanged }: Props) {
 
       <div className="row">
         <h1>Commande #{order.id}</h1>
-        <span className={`badge ${order.status}`}>{STATUS_LABEL[order.status]}</span>
+        <span className="badge" data-role={flow.role(order.status)}>{flow.label(order.status)}</span>
       </div>
 
-      {EDITABLE.includes(order.status) && (
+      {editable && (
         <button className="btn secondary" onClick={() => setEditing(true)} style={{ marginBottom: 12 }}>
           ✏️ Modifier la commande
         </button>
       )}
 
       {(badge || order.customer.blocked) && (
-        <div className={`error`} style={{ background: order.customer.blocked ? '#b23b3b' : '#e2820a' }}>
+        <div className="error" style={{ background: order.customer.blocked ? '#b23b3b' : '#e2820a' }}>
           {order.customer.blocked
             ? '🚫 Client sur liste noire'
-            : `⚠️ ${rel.delivered} livrées / ${rel.noShow} no-show`}
+            : rel
+              ? `⚠️ ${rel.delivered} livrées / ${rel.noShow} no-show`
+              : badge}
+        </div>
+      )}
+
+      {(order.customer.loyalty?.rewardsAvailable ?? 0) > 0 && (
+        <div className="error" style={{ background: '#2c9e4b' }}>
+          🎁 Récompense fidélité disponible pour ce client
         </div>
       )}
 
@@ -125,6 +135,12 @@ export function OrderDetail({ order, onBack, onChanged }: Props) {
             </li>
           ))}
         </ul>
+        {(order.referral_discount ?? 0) > 0 && (
+          <div className="row muted small">
+            <span>Réduction parrainage</span>
+            <span>-{order.referral_discount} EUR</span>
+          </div>
+        )}
         <div className="row total">
           <span>Total</span>
           <span>{order.total} EUR</span>
@@ -219,7 +235,7 @@ export function OrderDetail({ order, onBack, onChanged }: Props) {
         <div className="label" style={{ marginBottom: 6 }}>
           Message libre au client (via le bot)
         </div>
-        <MessageTemplates onPick={setMessage} />
+        {withTemplates && <MessageTemplates onPick={setMessage} />}
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}

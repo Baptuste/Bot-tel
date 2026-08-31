@@ -64,10 +64,7 @@ export function Customers() {
       {!loading && visible.length === 0 && <p className="muted">Aucun client.</p>}
 
       {visible.map((c) => {
-        const badge = reliabilityBadge(
-          { delivered: c.delivered, noShow: c.no_show, rate: c.delivered + c.no_show > 0 ? c.delivered / (c.delivered + c.no_show) : null },
-          c.blocked,
-        );
+        const badge = reliabilityBadge(c.reliability, c.blocked);
         return (
           <div key={c.user_id} className="card clickable" onClick={() => setSelected(c.user_id)}>
             <div className="row">

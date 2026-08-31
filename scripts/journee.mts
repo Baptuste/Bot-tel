@@ -50,7 +50,8 @@ const { changeStatus, notifyNewOrder } = await import('../src/orderFlow.ts');
 const { createOrder, getOrder, getLastOrder, getStatusCounts, getOrdersByStatus } = await import(
   '../src/orders.ts'
 );
-const { upsertCustomer, getReliability, listCustomers } = await import('../src/customers.ts');
+const { upsertCustomer, listCustomers } = await import('../src/customers.ts');
+const { getReliability } = await import('../src/modules/reliability.ts');
 const { getDashboard } = await import('../src/dashboard.ts');
 
 const iso = (d = new Date()) =>
@@ -255,7 +256,7 @@ try {
   const delivered = getOrdersByStatus('delivered');
   const revenue = delivered.reduce((s, o) => s + o.total, 0);
   const dash = getDashboard();
-  const noShows = listCustomers().filter((c) => c.no_show > 0);
+  const noShows = listCustomers().filter((c) => getReliability(c.user_id).noShow > 0);
   const label = (c: { name: string | null; username: string | null; user_id: number }) =>
     c.name ?? c.username ?? `#${c.user_id}`;
 

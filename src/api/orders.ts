@@ -8,8 +8,12 @@
 import { Router } from 'express';
 import type { Telegram } from 'telegraf';
 import { resolveMenuItems } from '../catalog';
-import { getCustomer, getReliability } from '../customers';
+import { getCustomer } from '../customers';
+import { features } from '../features';
+import { loyaltyStatus } from '../modules/loyalty';
+import { getReliability } from '../modules/reliability';
 import { changeStatus, nextStatuses, safeSend } from '../orderFlow';
+import { stageById } from '../orderStages';
 import {
   EDITABLE_STATUSES,
   getOrder,
@@ -28,7 +32,7 @@ import { requireAdmin } from './auth';
 function toDto(order: Order) {
   const route = order.route_id ? getRoute(order.route_id) : null;
   const customer = getCustomer(order.user_id);
-  const r = getReliability(order.user_id);
+  const r = features.reliability.enabled ? getReliability(order.user_id) : null;
   return {
     ...order,
     next: nextStatuses(order.status),
@@ -39,7 +43,10 @@ function toDto(order: Order) {
       name: customer?.name ?? null,
       blocked: customer?.blocked ?? false,
       delivery_note: customer?.delivery_note ?? null,
-      reliability: { delivered: r.delivered, noShow: r.noShow, rate: r.rate },
+      reliability: r ? { delivered: r.delivered, noShow: r.noShow, rate: r.rate } : null,
+      loyalty: features.loyalty.enabled
+        ? { rewardsAvailable: loyaltyStatus(order.user_id).rewardsAvailable }
+        : null,
     },
   };
 }
@@ -141,13 +148,14 @@ export function ordersRouter(telegram: Telegram): Router {
       return;
     }
 
+    const role = stageById(to)?.role;
     let updated: Awaited<ReturnType<typeof changeStatus>>;
-    if (to === 'delivered') {
-      // Passe la commande livree ET fait avancer le suivi de la tournee.
+    if (role === 'fulfilled') {
+      // Étape finale : markDelivered fait aussi avancer le suivi de la tournée.
       updated = await markDelivered(telegram, id);
     } else {
       const meta =
-        to === 'cancelled'
+        role === 'cancelled'
           ? {
               reason: req.body?.reason ? String(req.body.reason) : undefined,
               noShow: Boolean(req.body?.no_show),

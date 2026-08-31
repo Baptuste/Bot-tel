@@ -14,7 +14,9 @@
 import type { Telegram } from 'telegraf';
 import { db } from './db';
 import { driverExists, getDriver, type Driver } from './drivers';
+import { features } from './features';
 import { changeStatus, safeSend } from './orderFlow';
+import { requireRole } from './orderStages';
 import {
   detachRouteOrders,
   getAssignableOrders,
@@ -295,9 +297,11 @@ export async function startRoute(telegram: Telegram, id: number): Promise<RouteW
 
   q().setStatus.run('started', id);
   const driver = route.driver_id ? getDriver(route.driver_id) : null;
+  const acceptedId = requireRole('accepted').id;
+  const fulfillingId = requireRole('fulfilling').id;
   for (const order of getOrdersByRoute(id)) {
-    if (order.status === 'confirmed') {
-      await changeStatus(telegram, order.id, 'delivering');
+    if (order.status === acceptedId) {
+      await changeStatus(telegram, order.id, fulfillingId);
       if (driver) {
         await safeSend(telegram, order.user_id, `🛵 Ton livreur : ${driver.name}.`);
       }
@@ -312,9 +316,11 @@ export async function finishRoute(telegram: Telegram, id: number): Promise<Route
   if (!route || route.status !== 'started') return route ? withOrders(route) : null;
 
   q().setStatus.run('done', id);
+  const fulfillingId = requireRole('fulfilling').id;
+  const fulfilledId = requireRole('fulfilled').id;
   for (const order of getOrdersByRoute(id)) {
-    if (order.status === 'delivering') {
-      await changeStatus(telegram, order.id, 'delivered');
+    if (order.status === fulfillingId) {
+      await changeStatus(telegram, order.id, fulfilledId);
     }
   }
   return withOrders(getRoute(id) as Route);
@@ -327,7 +333,8 @@ export async function finishRoute(telegram: Telegram, id: number): Promise<Route
  * On ne previent que les 3 prochains (pas de spam sur une longue tournee).
  */
 export async function notifyRouteProgress(telegram: Telegram, routeId: number): Promise<void> {
-  const remaining = getOrdersByRoute(routeId).filter((o) => o.status === 'delivering');
+  const fulfillingId = requireRole('fulfilling').id;
+  const remaining = getOrdersByRoute(routeId).filter((o) => o.status === fulfillingId);
   for (let i = 0; i < remaining.length && i < 3; i++) {
     const o = remaining[i]!;
     const msg =
@@ -340,9 +347,9 @@ export async function notifyRouteProgress(telegram: Telegram, routeId: number): 
   }
 }
 
-/** Marque une commande livree ET fait avancer le suivi de la tournee. */
+/** Marque une commande à son étape finale ET fait avancer le suivi de la tournée. */
 export async function markDelivered(telegram: Telegram, orderId: number): Promise<Order | null> {
-  const updated = await changeStatus(telegram, orderId, 'delivered');
+  const updated = await changeStatus(telegram, orderId, requireRole('fulfilled').id);
   if (updated?.route_id) {
     await notifyRouteProgress(telegram, updated.route_id);
   }
@@ -365,6 +372,21 @@ export interface Slot {
   time: string;
   label: string;
   when: 'today' | 'tomorrow';
+  /** Places restantes dans le créneau, ou null si capacité illimitée. */
+  remaining: number | null;
+}
+
+/** Capacité effective d'une tournée : la sienne, sinon le défaut du client. */
+function slotCapacity(route: Route): number | null {
+  return route.max_capacity ?? features.deliverySlots.capacityLimit;
+}
+
+/** Tournée `planned`, aujourd'hui/demain, pas trop proche : candidate à un créneau. */
+function isSlotCandidate(route: Route, now: Date, todayISO: string, tomorrowISO: string): boolean {
+  if (route.status !== 'planned' || !route.slot_time) return false;
+  if (route.date !== todayISO && route.date !== tomorrowISO) return false;
+  const dt = new Date(`${route.date}T${route.slot_time}:00`);
+  return dt.getTime() - now.getTime() >= SLOT_LEAD_MINUTES * 60_000;
 }
 
 /** Creneaux reservables : tournee `planned`, pas passee, pas pleine. */
@@ -375,25 +397,32 @@ export function getAvailableSlots(now = new Date()): Slot[] {
 
   const slots: Slot[] = [];
   for (const route of q().list.all() as Route[]) {
-    if (route.status !== 'planned' || !route.slot_time) continue;
-    if (route.date !== todayISO && route.date !== tomorrowISO) continue;
+    if (!isSlotCandidate(route, now, todayISO, tomorrowISO)) continue;
 
-    const dt = new Date(`${route.date}T${route.slot_time}:00`);
-    if (dt.getTime() - now.getTime() < SLOT_LEAD_MINUTES * 60_000) continue;
-
-    if (route.max_capacity != null && getOrdersByRoute(route.id).length >= route.max_capacity) {
-      continue;
-    }
+    const cap = slotCapacity(route);
+    const count = getOrdersByRoute(route.id).length;
+    if (cap != null && count >= cap) continue;
 
     slots.push({
       routeId: route.id,
       date: route.date,
-      time: route.slot_time,
+      time: route.slot_time!,
       label: route.time_slot,
       when: route.date === todayISO ? 'today' : 'tomorrow',
+      remaining: cap == null ? null : cap - count,
     });
   }
 
   slots.sort((a, b) => (`${a.date}${a.time}` < `${b.date}${b.time}` ? -1 : 1));
   return slots.slice(0, 8);
+}
+
+/** Y a-t-il des créneaux programmés à venir (indépendamment de leur remplissage) ? */
+export function hasUpcomingSlots(now = new Date()): boolean {
+  ensureUpcomingRoutes(now);
+  const todayISO = localISODate(now);
+  const tomorrowISO = localISODate(new Date(now.getTime() + 86_400_000));
+  return (q().list.all() as Route[]).some((r) =>
+    isSlotCandidate(r, now, todayISO, tomorrowISO),
+  );
 }

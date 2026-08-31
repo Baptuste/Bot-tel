@@ -9,6 +9,7 @@ import { Markup } from 'telegraf';
 import { CB } from './callbacks';
 import { cartTotal, getCart, lineKey } from './cart';
 import { getMenu } from './catalog';
+import { features } from './features';
 import { imagePath } from './uploads';
 
 type InlineKeyboard = ReturnType<typeof Markup.inlineKeyboard>;
@@ -52,7 +53,7 @@ export function categoryView(catId: string): View | null {
 
   const rows = Object.entries(cat.items).map(([prodId, item]) => [
     Markup.button.callback(
-      `${item.label} - ${item.variants.length > 0 ? 'des ' : ''}${item.price} EUR`,
+      `${item.label} - ${item.variants.length > 0 ? 'dès ' : ''}${item.price} EUR`,
       CB.product(catId, prodId),
     ),
   ]);
@@ -79,7 +80,7 @@ export function productView(catId: string, prodId: string): AnyView | null {
   const keyboard = Markup.inlineKeyboard(rows);
 
   const priceLine =
-    item.variants.length > 0 ? 'Choisis une taille :' : `Prix : *${item.price} EUR*`;
+    item.variants.length > 0 ? `${features.variants.label} :` : `Prix : *${item.price} EUR*`;
   const text = `*${item.label}*\n${item.description}\n\n${priceLine}`;
 
   if (item.image) {

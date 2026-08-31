@@ -1,22 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from './api';
 import { Dashboard } from './Dashboard';
+import { useFlow } from './features';
 import { OrderDetail } from './OrderDetail';
-import { reliabilityBadge, slotText, STATUS_LABEL, type Order, type OrderStatus } from './types';
+import { reliabilityBadge, slotText, type Order } from './types';
 
-type Filter = 'open' | OrderStatus;
-
-const OPEN_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'delivering'];
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'open', label: 'A traiter' },
-  { key: 'pending', label: STATUS_LABEL.pending },
-  { key: 'confirmed', label: STATUS_LABEL.confirmed },
-  { key: 'delivering', label: STATUS_LABEL.delivering },
-  { key: 'delivered', label: STATUS_LABEL.delivered },
-  { key: 'cancelled', label: STATUS_LABEL.cancelled },
-];
+type Filter = 'open' | string;
 
 export function Orders() {
+  const flow = useFlow();
+  const openStatuses = useMemo(() => flow.openIds(), [flow]);
+  const filters: { key: Filter; label: string }[] = useMemo(
+    () => [
+      { key: 'open', label: 'A traiter' },
+      ...flow.stages.map((s) => ({ key: s.id, label: flow.label(s.id) })),
+    ],
+    [flow],
+  );
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [counts, setCounts] = useState<Partial<Record<string, number>>>({});
   const [filter, setFilter] = useState<Filter>('open');
@@ -45,9 +46,9 @@ export function Orders() {
   }, [load]);
 
   const visible = useMemo(() => {
-    if (filter === 'open') return orders.filter((o) => OPEN_STATUSES.includes(o.status));
+    if (filter === 'open') return orders.filter((o) => openStatuses.includes(o.status));
     return orders.filter((o) => o.status === filter);
-  }, [orders, filter]);
+  }, [orders, filter, openStatuses]);
 
   const selected = selectedId === null ? null : (orders.find((o) => o.id === selectedId) ?? null);
 
@@ -70,10 +71,13 @@ export function Orders() {
 
       {error && <div className="error">{error}</div>}
 
-      <Dashboard refreshKey={dashKey} onShowPending={() => setFilter('pending')} />
+      <Dashboard
+        refreshKey={dashKey}
+        onShowPending={() => setFilter(flow.roleId('placed') ?? 'open')}
+      />
 
       <div className="counts">
-        {FILTERS.map((f) => (
+        {filters.map((f) => (
           <button
             key={f.key}
             className={`chip ${filter === f.key ? 'active' : ''}`}
@@ -92,7 +96,7 @@ export function Orders() {
         <div key={o.id} className="card clickable" onClick={() => setSelectedId(o.id)}>
           <div className="row">
             <strong>#{o.id}</strong>
-            <span className={`badge ${o.status}`}>{STATUS_LABEL[o.status]}</span>
+            <span className="badge" data-role={flow.role(o.status)}>{flow.label(o.status)}</span>
           </div>
           <div className="muted">
             {o.customer.name || (o.username ? `@${o.username}` : `id ${o.user_id}`)} - {o.total} EUR -{' '}

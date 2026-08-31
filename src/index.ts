@@ -18,7 +18,10 @@ import { CALLBACK_PATTERN, parseCallback } from './callbacks';
 import { clearCart, getCart, lineKey, removeLine, setLineQty } from './cart';
 import { getMenu, seedCatalogIfEmpty } from './catalog';
 import { seedMessageTemplatesIfEmpty } from './messageTemplates';
-import { getOrdersByUser, STATUS_LABEL } from './orders';
+import { loyaltyStatus } from './modules/loyalty';
+import { referralInfo, registerFilleul } from './modules/referral';
+import { statusLabel } from './orderStages';
+import { getOrdersByUser } from './orders';
 import { seedDefaultTemplatesIfEmpty } from './routes';
 import { startScheduler } from './scheduler';
 import { sqliteSessionStore } from './sessionStore';
@@ -36,7 +39,7 @@ import {
 // 1er demarrage : importe menu.json + cree les modeles de tournees par defaut.
 seedCatalogIfEmpty();
 if (features.deliverySlots.enabled) seedDefaultTemplatesIfEmpty();
-seedMessageTemplatesIfEmpty();
+if (features.messaging.templatesEnabled) seedMessageTemplatesIfEmpty();
 getMenu();
 
 const bot = new Telegraf<BotContext>(config.botToken);
@@ -115,11 +118,56 @@ bot.command('mes_commandes', async (ctx) => {
     .slice(0, 10)
     .map((o) => {
       const items = o.items.map((l) => `${l.label} x${l.qty}`).join(', ');
-      return `#${o.id} - ${o.total} EUR - ${STATUS_LABEL[o.status]}\n${items}\n${o.created_at}`;
+      return `#${o.id} - ${o.total} EUR - ${statusLabel(o.status)}\n${items}\n${o.created_at}`;
     })
     .join('\n\n');
   await ctx.reply(`Tes dernieres commandes :\n\n${text}`);
 });
+
+if (features.loyalty.enabled) {
+  bot.command('fidelite', async (ctx) => {
+    const s = loyaltyStatus(userId(ctx));
+    const line =
+      s.rewardsAvailable > 0
+        ? `🎁 Tu as ${s.rewardsAvailable} recompense(s) : ${s.rewardLabel}. Signale-le en commandant !`
+        : `Plus que ${s.toNextReward} point(s) pour : ${s.rewardLabel}.`;
+    await ctx.reply(`⭐ Fidelite\n\nTu as ${s.points} point(s).\n${line}`);
+  });
+}
+
+if (features.referral.enabled) {
+  const REGISTER_ERR: Record<string, string> = {
+    code_invalide: "Ce code n'existe pas.",
+    auto_parrainage: 'Tu ne peux pas utiliser ton propre code.',
+    parrain_inconnu: "Ce code n'existe pas.",
+    deja_parraine: 'Tu as deja un code de parrainage enregistre.',
+    trop_tard: 'Le parrainage est reserve a ta toute premiere commande.',
+  };
+  bot.command('parrainage', async (ctx) => {
+    const uid = userId(ctx);
+    const arg = ctx.message.text.split(/\s+/)[1]?.trim();
+    if (arg) {
+      const res = registerFilleul(uid, arg);
+      await ctx.reply(
+        res.ok
+          ? `✅ Code accepte ! ${referralInfo(uid).filleulDiscount} EUR de reduction sur ta premiere commande.`
+          : `❌ ${REGISTER_ERR[res.reason] ?? 'Code refuse.'}`,
+      );
+      return;
+    }
+    const info = referralInfo(uid);
+    const parts = [
+      `👥 Parrainage\n\nTon code : *${info.code}*`,
+      `Partage-le : a sa 1re commande avec ton code, ton filleul a ${info.filleulDiscount} EUR ` +
+        `de reduction et toi ${info.parrainReward} EUR sur ta commande suivante.`,
+    ];
+    if (info.filleulsCompleted > 0) parts.push(`Filleuls actifs : ${info.filleulsCompleted}.`);
+    if (info.creditAvailable > 0) {
+      parts.push(`🎁 Tu as ${info.creditAvailable} EUR de credit parrain, applique a ta prochaine commande.`);
+    }
+    await ctx.reply(parts.join('\n\n'), { parse_mode: 'Markdown' });
+  });
+}
 
 // Commandes + listener admin (gates par ADMIN_IDS).
 registerAdmin(bot);
@@ -244,6 +292,12 @@ async function publishCommands(): Promise<void> {
     { command: 'start', description: 'Afficher le menu' },
     { command: 'panier', description: 'Voir mon panier' },
     { command: 'mes_commandes', description: 'Mon historique de commandes' },
+    ...(features.loyalty.enabled
+      ? [{ command: 'fidelite', description: 'Mes points de fidelite' }]
+      : []),
+    ...(features.referral.enabled
+      ? [{ command: 'parrainage', description: 'Mon code de parrainage' }]
+      : []),
   ];
   await bot.telegram.setMyCommands(base);
   for (const adminId of config.adminIds) {

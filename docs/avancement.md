@@ -4,7 +4,7 @@
 Pour le "pourquoi" des choix : [`cadrage.md`](./cadrage.md) (cadrage initial) et
 [`coeur-et-modules.md`](./coeur-et-modules.md) (direction : cœur générique + modules).
 
-> Dernière mise à jour : 2026-08-28, brique 17 (multi-livreurs) + test de journée simulée.
+> Dernière mise à jour : 2026-08-31, Partie 2 terminée + Partie 3 : créneaux à capacité limitée.
 
 **Modularisation « cœur + modules » : terminée** (6 étapes, section dédiée plus
 bas) — voir [`coeur-et-modules.md`](./coeur-et-modules.md). Le bot est piloté par
@@ -15,11 +15,10 @@ soit modifié.
 Bot de test : **@Testshopa1bot** (token dans `.env`, non commité).
 `ADMIN_IDS=786545252` (compte de l'utilisateur).
 
-Vérification : `npm run typecheck` (0 erreur) + `npm run smoke` (**66 checks**)
-+ `npm run test:boutique` (**15**, client retrait fictif) + `npm run test:journee`
-(**30**, journée simulée : 20 clients / 3 tournées / 3 livreurs / no-shows /
-re-commandes), voir `scripts/`. Certains rendus visuels restent à confirmer sur
-le téléphone.
+Vérification : `npm run typecheck` (0) + `smoke` (**66**) + `test:boutique`
+(**29**) + `test:journee` (**30**) + `test:creneaux` (**7**) + `test:loyalty`
+(**13**) + `test:referral` (**16**), voir `scripts/`. Certains rendus visuels
+restent à confirmer sur le téléphone.
 
 ---
 
@@ -207,9 +206,58 @@ pizzeria ne bouge pas.
    `catalog.ts` / `cart.ts` / `orderFlow.ts`**. Seuls fichiers modifiés pour ce
    client : `features.ts` (une entrée de registre).
 
-**Chantier terminé.** Le cœur (`catalog.ts`, `cart.ts`, `orderFlow.ts`,
-`sessionStore.ts`, `messageTemplates.ts`) n'a pas été modifié. Adapter un
-nouveau métier = ajouter une entrée à `src/features.ts` + `web/`… rien d'autre.
+**Chantier « cœur + modules » terminé.** Adapter un nouveau métier = ajouter une
+entrée à `src/features.ts` + `web/`.
+
+---
+
+## Refactoring du cœur — [`feuille-de-route.md`](./feuille-de-route.md) Partie 2
+
+Objectif : réduire le cœur au socle incompressible.
+
+1. ✅ **Fiabilité extraite** — `src/modules/reliability.ts` (calcul + `listReliability`
+   batch). `customers.ts` = fiche minimale. `orderFlow.customerFlag()` consulte
+   `features.reliability.enabled`. `reliability` nullable dans les DTO / le front.
+   *(commit `90a2bdc`)*
+2. ✅ **Messages pré-écrits conditionnels** — flag `messaging.templatesEnabled`.
+   Table `message_templates`, `/api/templates`, seed et bloc chips Mini App montés
+   seulement si actif. `messageTemplates.ts` en requêtes à la demande. *(commit `6e0571d`)*
+3. ✅ **Textes en dur de `views.ts`** — « taille » → `features.variants.label`.
+   `catalog.getMenu()` masque les variantes si `!features.variants.enabled`
+   (`listCatalog` admin non touché). `boutique-demo` = config « tout module off ».
+   *Déviation assumée : `catalog.ts` / `views.ts` lisent `features.ts`.* *(commit `2da8914`)*
+4. ✅ **Machine à états paramétrable** (4 phases). `features.orderFlow` = liste
+   d'étapes à rôle sémantique (`placed / accepted / fulfilling / fulfilled /
+   cancelled`). `src/orderStages.ts` (helpers + `validateOrderFlow`), transitions
+   générées, `OrderStatus = string`, Mini App via `useFlow()` / `/api/features`.
+   `boutique-demo` tourne en `pending → confirmed → ready → collected`.
+   Pizzeria strictement inchangée (smoke 66, journee 30 · 290 €).
+
+**Refactoring du cœur terminé.** Cœur = `catalog.ts` (– lecture `variants`),
+`cart.ts`, `orders.ts`, `sessionStore.ts`, `views.ts` (– `variants.label`),
+`callbacks.ts`, `scenes/quantity.ts`, `api/auth.ts` + les nouveaux
+`src/orderStages.ts` (config), `src/modules/*`.
+
+---
+
+## Nouveaux modules — [`feuille-de-route.md`](./feuille-de-route.md) Partie 3
+
+- ✅ **Créneaux à capacité limitée** — flag `deliverySlots.capacityLimit`
+  (défaut du client, `null` = illimité ; une capacité posée sur une tournée
+  reste prioritaire). `getAvailableSlots()` renvoie `Slot.remaining` (affiché
+  dès ≤ 3), `hasUpcomingSlots()` distingue « aucun créneau » de « tous complets ».
+  Mini App : `n / max — complet` sur la carte tournée. `npm run test:creneaux`.
+- ✅ **Programme de fidélité** — flags `loyalty.*`, table séparée `loyalty`,
+  module `src/modules/loyalty.ts`. Points crédités au rôle `fulfilled` (via
+  `changeStatus`), notif client au palier. Bot `/fidelite` + ligne récap ;
+  admin : flag sur la commande + bouton « Utiliser une récompense » sur la fiche
+  client. `boutique-demo` activé (viennoiserie / 10). `npm run test:loyalty`.
+- ✅ **Parrainage** — flags `referral.*`, table `referrals`, module
+  `src/modules/referral.ts`. Code = `user_id` en base 36. `/parrainage [code]`.
+  Réduction appliquée dans `checkout.ts` (`orders.referral_discount`) — **cart.ts
+  intact**. Filleul −X à la 1re commande → crédit parrain (notif) consommé ensuite.
+  `boutique-demo` : 5 €/5 €. `npm run test:referral`.
+- ⏸ Notifications marketing (bloqué : règles Telegram à vérifier)
 
 ---
 

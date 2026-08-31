@@ -10,10 +10,13 @@
  */
 import { Markup, type Telegram } from 'telegraf';
 import { config } from './config';
-import { getCustomer, getReliability } from './customers';
+import { getCustomer } from './customers';
+import { features, type OrderFlowConfig } from './features';
+import { awardForOrder, loyaltyStatus } from './modules/loyalty';
+import { getReliability } from './modules/reliability';
+import { stageById, statusLabel } from './orderStages';
 import {
   getOrder,
-  STATUS_LABEL,
   updateOrderStatus,
   type CancellationMeta,
   type Order,
@@ -45,47 +48,34 @@ interface Transition {
   clientMsg: (o: Order) => string;
 }
 
-const TRANSITIONS: Record<OrderStatus, Transition[]> = {
-  pending: [
-    {
-      to: 'confirmed',
-      adminLabel: '✅ Confirmer',
-      clientMsg: (o) => `✅ Ta commande #${o.id} est confirmee !\nLivraison estimee : ~45 minutes.`,
-    },
-    {
-      to: 'cancelled',
-      adminLabel: '❌ Refuser',
-      clientMsg: (o) =>
-        `❌ Ta commande #${o.id} n'a pas pu etre acceptee. Contacte-nous pour en savoir plus.`,
-    },
-  ],
-  confirmed: [
-    {
-      to: 'delivering',
-      adminLabel: '🛵 En livraison',
-      clientMsg: (o) => `🛵 Ta commande #${o.id} est en route !`,
-    },
-    {
-      to: 'cancelled',
-      adminLabel: '❌ Annuler',
-      clientMsg: (o) => `❌ Ta commande #${o.id} a ete annulee. Contacte-nous pour en savoir plus.`,
-    },
-  ],
-  delivering: [
-    {
-      to: 'delivered',
-      adminLabel: '📦 Livree',
-      clientMsg: (o) => `📦 Ta commande #${o.id} a ete livree. Bon appetit ! 🍽`,
-    },
-    {
-      to: 'cancelled',
-      adminLabel: '❌ Souci',
-      clientMsg: (o) => `❌ Ta commande #${o.id} a ete annulee. Contacte-nous pour en savoir plus.`,
-    },
-  ],
-  delivered: [],
-  cancelled: [],
-};
+/** Construit la table des transitions (linéaire + annulation) à partir de la config. */
+function buildTransitions(cfg: OrderFlowConfig): Record<string, Transition[]> {
+  const cancelStage = cfg.stages.find((s) => s.role === 'cancelled')!;
+  const linear = cfg.stages.filter((s) => s.role !== 'cancelled');
+  const fill = (tpl: string, o: Order) => tpl.replace('{id}', String(o.id));
+
+  const out: Record<string, Transition[]> = { [cancelStage.id]: [] };
+  linear.forEach((stage, i) => {
+    const transitions: Transition[] = [];
+    const next = linear[i + 1];
+    if (next?.advanceLabel && next.arrivalMessage) {
+      const msg = next.arrivalMessage;
+      transitions.push({ to: next.id, adminLabel: next.advanceLabel, clientMsg: (o) => fill(msg, o) });
+    }
+    if (stage.cancelLabel && stage.cancelMessage) {
+      const msg = stage.cancelMessage;
+      transitions.push({
+        to: cancelStage.id,
+        adminLabel: stage.cancelLabel,
+        clientMsg: (o) => fill(msg, o),
+      });
+    }
+    out[stage.id] = transitions;
+  });
+  return out;
+}
+
+const TRANSITIONS: Record<string, Transition[]> = buildTransitions(features.orderFlow);
 
 export interface StatusOption {
   to: OrderStatus;
@@ -94,13 +84,14 @@ export interface StatusOption {
 
 /** Transitions possibles depuis un statut (partagees par le bot ET la Mini App). */
 export function nextStatuses(status: OrderStatus): StatusOption[] {
-  return TRANSITIONS[status].map((t) => ({ to: t.to, label: t.adminLabel }));
+  return (TRANSITIONS[status] ?? []).map((t) => ({ to: t.to, label: t.adminLabel }));
 }
 
 /** Ligne d'alerte sur le client (bloque / no-show), vide s'il est fiable ou nouveau. */
 function customerFlag(userId: number): string {
   const customer = getCustomer(userId);
   if (customer?.blocked) return '🚫 CLIENT BLOQUE (liste noire)\n';
+  if (!features.reliability.enabled) return '';
   const r = getReliability(userId);
   if (r.noShow > 0) {
     const pct = r.rate === null ? '?' : Math.round(r.rate * 100);
@@ -114,7 +105,7 @@ export function renderOrderText(o: Order): string {
   const items = o.items.map((l) => `  - ${l.label} x${l.qty}  (${l.price * l.qty} EUR)`).join('\n');
   const who = o.username ? `@${o.username}` : `id ${o.user_id}`;
   return (
-    `Commande #${o.id} - ${STATUS_LABEL[o.status]}\n` +
+    `Commande #${o.id} - ${statusLabel(o.status)}\n` +
     customerFlag(o.user_id) +
     `Client : ${who}\n` +
     (o.phone ? `Tel : ${o.phone}\n` : '') +
@@ -122,9 +113,19 @@ export function renderOrderText(o: Order): string {
     (o.delivery_note ? `Precision : ${o.delivery_note}\n` : '') +
     `${items}\n` +
     `Total : ${o.total} EUR\n` +
+    loyaltyFlag(o.user_id) +
     (o.cancellation_reason ? `Annulation : ${o.cancellation_reason}\n` : '') +
     `Passee le ${o.created_at} UTC`
   );
+}
+
+/** Ligne « récompense fidélité à appliquer » sur la commande (vide sinon). */
+function loyaltyFlag(userId: number): string {
+  if (!features.loyalty.enabled) return '';
+  const s = loyaltyStatus(userId);
+  return s.rewardsAvailable > 0
+    ? `🎁 Recompense fidelite a appliquer : ${s.rewardLabel} (${s.points} pts)\n`
+    : '';
 }
 
 /** Clavier inline des transitions possibles pour une commande (bot). */
@@ -148,14 +149,30 @@ export async function changeStatus(
   const current = getOrder(orderId);
   if (!current) return null;
 
-  const transition = TRANSITIONS[current.status].find((t) => t.to === to);
+  const transition = (TRANSITIONS[current.status] ?? []).find((t) => t.to === to);
   if (!transition) return current; // transition non autorisee -> on ne fait rien
 
   const updated = updateOrderStatus(orderId, to, meta);
   if (updated) {
     await safeSend(telegram, updated.user_id, transition.clientMsg(updated));
+    if (features.loyalty.enabled && stageById(to)?.role === 'fulfilled') {
+      await awardLoyalty(telegram, updated);
+    }
   }
   return updated;
+}
+
+/** Crédite les points de fidélité d'une commande servie et notifie au palier. */
+async function awardLoyalty(telegram: Telegram, order: Order): Promise<void> {
+  const { status, crossedThreshold } = awardForOrder(order.user_id);
+  if (crossedThreshold) {
+    await safeSend(
+      telegram,
+      order.user_id,
+      `🎉 ${status.points} points de fidelite ! Tu as debloque : ${status.rewardLabel}.\n` +
+        'Signale-le a ta prochaine commande.',
+    );
+  }
 }
 
 /** Previent les admins qu'une nouvelle commande vient d'arriver. */

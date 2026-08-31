@@ -11,6 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { db } from './db';
+import { features } from './features';
 import type { CartLine, Menu, MenuItem, MenuVariant } from './types';
 import { deleteImageFile } from './uploads';
 
@@ -168,18 +169,28 @@ export function seedCatalogIfEmpty(): void {
 
 let menuCache: Menu | null = null;
 
-/** Menu filtre pour le bot : categories non vides, produits disponibles uniquement. */
+/**
+ * Menu filtre pour le bot : categories non vides, produits disponibles uniquement.
+ *
+ * Note module : si `features.variants.enabled` est faux, les variantes sont
+ * masquees ici (produit traite comme simple, au prix de base) — le point unique
+ * ou le bot, le panier et la validation voient le menu. L'editeur de catalogue
+ * de la Mini App (`listCatalog`) n'est pas concerne et garde toutes les variantes.
+ */
 export function getMenu(): Menu {
   if (menuCache) return menuCache;
 
+  const withVariants = features.variants.enabled;
   const menu: Menu = {};
   for (const cat of q.categories.all() as Category[]) {
     const items = (q.productsByCategory.all(cat.id) as ProductRow[])
       .filter((p) => p.available === 1)
       .reduce<Record<string, MenuItem>>((acc, p) => {
-        const variants: MenuVariant[] = (q.variantsByProduct.all(p.id) as VariantRow[])
-          .filter((v) => v.available === 1)
-          .map((v) => ({ id: String(v.id), label: v.label, price: v.price }));
+        const variants: MenuVariant[] = withVariants
+          ? (q.variantsByProduct.all(p.id) as VariantRow[])
+              .filter((v) => v.available === 1)
+              .map((v) => ({ id: String(v.id), label: v.label, price: v.price }))
+          : [];
 
         // Prix affiche : "a partir de" la variante la moins chere, sinon le prix de base.
         const price =

@@ -23,10 +23,16 @@ import { Composer, Markup, Scenes } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { cartTotal, clearCart, getCart, reconcileCart } from '../cart';
 import { notifyNewOrder } from '../orderFlow';
+import { loyaltyStatus } from '../modules/loyalty';
+import {
+  commitCheckout as commitReferral,
+  previewCheckout as previewReferral,
+} from '../modules/referral';
+import { initialStatusId, statusLabel } from '../orderStages';
 import { userId, type BotContext, type CheckoutState } from '../context';
 import { getCustomer, upsertCustomer } from '../customers';
 import { createOrder, getLastOrder, getOrder } from '../orders';
-import { getAvailableSlots, type Slot } from '../routes';
+import { getAvailableSlots, hasUpcomingSlots, type Slot } from '../routes';
 import { features } from '../features';
 
 export const CHECKOUT_SCENE_ID = 'checkout';
@@ -58,7 +64,10 @@ function stepHeader(key: string, title: string): string {
 }
 
 function slotButtonLabel(s: Slot): string {
-  return `🕒 ${s.time} ${s.when === 'today' ? "aujourd'hui" : 'demain'}`;
+  const when = s.when === 'today' ? "aujourd'hui" : 'demain';
+  // On ne montre le compteur que quand il commence a se remplir (evite le bruit).
+  const left = s.remaining !== null && s.remaining <= 3 ? ` (${s.remaining} places)` : '';
+  return `🕒 ${s.time} ${when}${left}`;
 }
 
 function state(ctx: BotContext): CheckoutState {
@@ -241,13 +250,14 @@ async function promptSlot(ctx: BotContext): Promise<void> {
   const rows = slots.map((s) => [Markup.button.callback(slotButtonLabel(s), `slot:${s.routeId}`)]);
   rows.push([Markup.button.callback('Peu importe (au plus tot)', 'slot:any')]);
 
-  await ctx.reply(
-    `${stepHeader('slot', 'Creneau de livraison')}\n\n` +
-      (slots.length > 0
-        ? 'Choisis quand tu veux etre livre :'
-        : 'Aucun creneau programme pour le moment. On te livrera au plus tot.'),
-    Markup.inlineKeyboard(rows),
-  );
+  const intro =
+    slots.length > 0
+      ? 'Choisis quand tu veux etre livre :'
+      : hasUpcomingSlots()
+        ? 'Tous les creneaux sont complets pour le moment. On te livrera au plus tot.'
+        : 'Aucun creneau programme pour le moment. On te livrera au plus tot.';
+
+  await ctx.reply(`${stepHeader('slot', 'Creneau de livraison')}\n\n${intro}`, Markup.inlineKeyboard(rows));
 }
 
 const collectSlot = new Composer<BotContext>();
@@ -265,7 +275,7 @@ collectSlot.action(/^slot:(any|\d+)$/, async (ctx) => {
   } else {
     const chosen = getAvailableSlots().find((x) => x.routeId === Number(raw));
     if (!chosen) {
-      await ctx.reply("Ce creneau n'est plus disponible, choisis-en un autre.");
+      await ctx.reply('Ce creneau vient d\'etre complete. Choisis-en un autre :');
       await promptSlot(ctx);
       return; // on reste sur l'etape
     }
@@ -335,22 +345,39 @@ function paymentLine(): string {
   return `Paiement : ${remise} (${methods} sur place)`;
 }
 
+/** Ligne "récompense fidélité disponible" du recap, si le client en a une. */
+function loyaltyLine(uid: number): string {
+  if (!features.loyalty.enabled) return '';
+  const s = loyaltyStatus(uid);
+  return s.rewardsAvailable > 0
+    ? `🎁 Recompense fidelite dispo : ${s.rewardLabel} — signale-le en boutique / au livreur\n`
+    : '';
+}
+
 async function promptConfirm(ctx: BotContext): Promise<void> {
   const uid = userId(ctx);
   const lines = getCart(uid);
   const s = state(ctx);
   const body = lines.map((l) => `- ${l.label} x ${l.qty}  =  ${l.price * l.qty} EUR`).join('\n');
 
+  const subtotal = cartTotal(uid);
+  const ref = features.referral.enabled ? previewReferral(uid, subtotal) : null;
+  const totalBlock =
+    ref && ref.discount > 0
+      ? `Sous-total : ${subtotal} EUR\n${ref.lines.join('\n')}\nTotal : ${subtotal - ref.discount} EUR\n`
+      : `Total : ${subtotal} EUR\n`;
+
   await ctx.reply(
     `${stepHeader('confirm', 'Confirmation')}\n\n` +
       `${body}\n\n` +
-      `Total : ${cartTotal(uid)} EUR\n` +
+      totalBlock +
       (s.address ? `Adresse : ${s.address}\n` : '') +
       (s.phone ? `Telephone : ${s.phone}\n` : '') +
       (features.deliverySlots.enabled ? `Creneau : ${s.slotLabel ?? 'au plus tot'}\n` : '') +
       (s.deliveryNote ? `Precision : ${s.deliveryNote}\n` : '') +
-      `${paymentLine()}\n\n` +
-      'On valide la commande ?',
+      `${paymentLine()}\n` +
+      loyaltyLine(uid) +
+      '\nOn valide la commande ?',
     Markup.inlineKeyboard([
       [Markup.button.callback('✅ Confirmer', 'order:confirm')],
       [Markup.button.callback('❌ Annuler', 'order:cancel')],
@@ -395,23 +422,42 @@ confirmStep.action('order:confirm', async (ctx) => {
     return; // on reste sur l'etape confirmation
   }
 
+  const subtotal = cartTotal(uid);
+  const ref = features.referral.enabled ? previewReferral(uid, subtotal) : null;
+  const total = subtotal - (ref?.discount ?? 0);
+
   const orderId = createOrder({
     userId: uid,
     username: ctx.from?.username,
     phone,
     address,
     items: lines,
-    total: cartTotal(uid),
+    total,
     routeId: routeId ?? null,
     deliveryNote: deliveryNote ?? null,
+    referralDiscount: ref && ref.discount > 0 ? ref.discount : null,
   });
   // Fiche client : creee ou rafraichie (username / tel / adresse / precision).
   upsertCustomer({ userId: uid, username: ctx.from?.username, phone, address, deliveryNote });
   clearCart(uid);
 
+  // Applique le parrainage en base + notifie le parrain si son filleul vient de commander.
+  if (ref && ref.discount > 0) {
+    const { parrainToNotify } = commitReferral(ref);
+    if (parrainToNotify !== null) {
+      await ctx.telegram
+        .sendMessage(
+          parrainToNotify,
+          `🎁 Ton filleul vient de passer sa premiere commande ! ${features.referral.parrainReward} EUR pour toi sur ta prochaine commande.`,
+        )
+        .catch(() => undefined);
+    }
+  }
+
   await ctx.editMessageText(
     `✅ Commande #${orderId} enregistree !\n\n` +
-      'Statut : en attente de confirmation\n' +
+      `Statut : ${statusLabel(initialStatusId())}\n` +
+      (ref && ref.discount > 0 ? `Reduction parrainage : -${ref.discount} EUR (total ${total} EUR)\n` : '') +
       (features.deliverySlots.enabled ? `Creneau : ${slotLabel ?? 'au plus tot'}\n` : '') +
       '\nTu recevras un message des que la commande est confirmee.',
   );

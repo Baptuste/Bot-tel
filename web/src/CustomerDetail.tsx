@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import { api } from './api';
-import { alertDialog, tg } from './telegram';
-import { STATUS_LABEL, type Customer, type Order, type Reliability } from './types';
+import { useFeatures, useFlow } from './features';
+import { alertDialog, confirmDialog, tg } from './telegram';
+import {
+  type Customer,
+  type LoyaltyStatus,
+  type Order,
+  type ReferralInfo,
+  type Reliability,
+} from './types';
 
 interface Props {
   userId: number;
@@ -9,8 +16,14 @@ interface Props {
 }
 
 export function CustomerDetail({ userId, onBack }: Props) {
+  const flow = useFlow();
+  const features = useFeatures();
+  const withLoyalty = features.loyalty.enabled;
+  const withReferral = features.referral.enabled;
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [reliability, setReliability] = useState<Reliability | null>(null);
+  const [loyalty, setLoyalty] = useState<LoyaltyStatus | null>(null);
+  const [referral, setReferral] = useState<ReferralInfo | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -25,6 +38,8 @@ export function CustomerDetail({ userId, onBack }: Props) {
       const d = await api.customers.get(userId);
       setCustomer(d.customer);
       setReliability(d.reliability);
+      setLoyalty(d.loyalty);
+      setReferral(d.referral);
       setOrders(d.orders);
       setName(d.customer.name ?? '');
       setNote(d.customer.delivery_note ?? '');
@@ -60,9 +75,10 @@ export function CustomerDetail({ userId, onBack }: Props) {
   }
 
   if (error) return <div className="error">{error}</div>;
-  if (!customer || !reliability) return <p className="muted">Chargement...</p>;
+  if (!customer) return <p className="muted">Chargement...</p>;
 
-  const rate = reliability.rate === null ? '—' : `${Math.round(reliability.rate * 100)}%`;
+  const rate =
+    !reliability || reliability.rate === null ? '—' : `${Math.round(reliability.rate * 100)}%`;
 
   return (
     <>
@@ -106,27 +122,31 @@ export function CustomerDetail({ userId, onBack }: Props) {
       </div>
 
       <div className="card">
-        <div className="label" style={{ marginBottom: 6 }}>
-          Fiabilité
-        </div>
-        <div className="rel-grid">
-          <div>
-            <strong>{reliability.delivered}</strong>
-            <div className="muted small">livrées</div>
-          </div>
-          <div>
-            <strong>{reliability.noShow}</strong>
-            <div className="muted small">no-show</div>
-          </div>
-          <div>
-            <strong>{reliability.cancelledOther}</strong>
-            <div className="muted small">annul. légit.</div>
-          </div>
-          <div>
-            <strong>{rate}</strong>
-            <div className="muted small">taux</div>
-          </div>
-        </div>
+        {reliability && (
+          <>
+            <div className="label" style={{ marginBottom: 6 }}>
+              Fiabilité
+            </div>
+            <div className="rel-grid">
+              <div>
+                <strong>{reliability.delivered}</strong>
+                <div className="muted small">livrées</div>
+              </div>
+              <div>
+                <strong>{reliability.noShow}</strong>
+                <div className="muted small">no-show</div>
+              </div>
+              <div>
+                <strong>{reliability.cancelledOther}</strong>
+                <div className="muted small">annul. légit.</div>
+              </div>
+              <div>
+                <strong>{rate}</strong>
+                <div className="muted small">taux</div>
+              </div>
+            </div>
+          </>
+        )}
         <button
           className={`btn ${customer.blocked ? 'secondary' : ''}`}
           style={{ marginTop: 10 }}
@@ -137,6 +157,62 @@ export function CustomerDetail({ userId, onBack }: Props) {
         </button>
       </div>
 
+      {withLoyalty && loyalty && (
+        <div className="card">
+          <div className="label" style={{ marginBottom: 6 }}>
+            Fidélité
+          </div>
+          <div className="field">
+            <strong>{loyalty.points}</strong> point(s)
+            {loyalty.rewardsAvailable > 0 ? (
+              <span className="badge" data-role="fulfilled" style={{ marginLeft: 8 }}>
+                🎁 {loyalty.rewardsAvailable} × {loyalty.rewardLabel}
+              </span>
+            ) : (
+              <span className="muted small"> — encore {loyalty.toNextReward} pour {loyalty.rewardLabel}</span>
+            )}
+          </div>
+          {loyalty.rewardsAvailable > 0 && (
+            <button
+              className="btn secondary"
+              style={{ marginTop: 8 }}
+              disabled={busy}
+              onClick={async () => {
+                if (await confirmDialog(`Appliquer la récompense « ${loyalty.rewardLabel} » ?`)) {
+                  setBusy(true);
+                  try {
+                    await api.customers.redeemLoyalty(userId);
+                    await load();
+                  } catch (e) {
+                    alertDialog(e instanceof Error ? e.message : 'Erreur');
+                  } finally {
+                    setBusy(false);
+                  }
+                }
+              }}
+            >
+              🎁 Utiliser une récompense
+            </button>
+          )}
+        </div>
+      )}
+
+      {withReferral && referral && (
+        <div className="card">
+          <div className="label" style={{ marginBottom: 6 }}>
+            Parrainage
+          </div>
+          <div className="field">
+            Code : <strong>{referral.code}</strong>
+          </div>
+          <div className="field muted small">
+            {referral.filleulsCompleted} filleul(s) actif(s)
+            {referral.pendingAsFilleul ? ' · parrainé, en attente de sa 1re commande' : ''}
+            {referral.creditAvailable > 0 ? ` · crédit parrain : ${referral.creditAvailable} €` : ''}
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <div className="label" style={{ marginBottom: 6 }}>
           Historique ({orders.length})
@@ -146,7 +222,7 @@ export function CustomerDetail({ userId, onBack }: Props) {
             <span>
               #{o.id} <span className="muted">{o.created_at.slice(0, 10)}</span>
             </span>
-            <span className={`badge ${o.status}`}>{STATUS_LABEL[o.status]}</span>
+            <span className="badge" data-role={flow.role(o.status)}>{flow.label(o.status)}</span>
           </div>
         ))}
       </div>
