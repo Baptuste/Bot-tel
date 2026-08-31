@@ -202,9 +202,10 @@ Typo : pile système pour la prose, **IBM Plex Mono** pour toute la donnée.
 | **5** | Notifications : `features.ts` flows (label/arrival/cancel), `renderOrderText` à icônes, `routes.ts` (progression sans genrer le client), `scheduler.ts`, `messageTemplates.ts`, `/fidelite` + `/parrainage`. Assertions de test synchronisées. | `6583ad0` |
 | **6** | Écrans Mini App restants : accents sur toute la copie admin, en-têtes `<h2>` (intercalaires mono), `.product` flex-wrap (fix wrapping « dès 9 € »), `.badge.cancelled` → `.flag`, séparateurs `·`. | `5e73196` |
 | **7** | Feedback : `answerCbQuery` utiles (« Créneau choisi », « Commande envoyée ! »). Passage global **EUR → €** (bot + Mini App). | `76257a7` |
+| **8** | *Styliser davantage.* Mini App : **bandeau d'en-tête** (nom boutique, était absent), **barre de progression** des tournées (dashboard + carte), états vides calmes, effet d'appui. Bot : **panier + récap checkout en bloc monospace `\`\`\``** (colonnes alignées, points de conduite, TOTAL) — écho direct du docket. Le récap met tout dans le bloc → `parse_mode` réactivé sans risque de casse. | `a1b2783` |
 
-**Reste possible plus tard** : petites animations de progression (Telegram natif) ;
-choix explicite du mode de paiement + pourboire au checkout (reliquat V2).
+**Reste possible plus tard** : choix explicite du mode de paiement + pourboire au
+checkout (reliquat V2).
 
 Une fois ce chantier jugé satisfaisant : reprise de `feuille-de-route.md`
 (Partie 4 configurateur, module marketing).
