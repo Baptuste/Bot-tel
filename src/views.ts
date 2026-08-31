@@ -41,7 +41,7 @@ export function categoriesView(): View {
   rows.push([Markup.button.callback('🛒 Voir mon panier', CB.showCart())]);
 
   return {
-    text: '*Notre menu*\n\nChoisis une categorie :',
+    text: `*${features.displayName}*\n\nNotre menu du jour — choisis une catégorie :`,
     keyboard: Markup.inlineKeyboard(rows),
   };
 }
@@ -53,14 +53,14 @@ export function categoryView(catId: string): View | null {
 
   const rows = Object.entries(cat.items).map(([prodId, item]) => [
     Markup.button.callback(
-      `${item.label} - ${item.variants.length > 0 ? 'dès ' : ''}${item.price} EUR`,
+      `${item.label} — ${item.variants.length > 0 ? 'dès ' : ''}${item.price} EUR`,
       CB.product(catId, prodId),
     ),
   ]);
-  rows.push([Markup.button.callback('⬅️ Retour aux categories', CB.home())]);
+  rows.push([Markup.button.callback('⬅️ Retour aux catégories', CB.home())]);
 
   return {
-    text: `*${cat.label}*\n\nChoisis un produit :`,
+    text: `*${cat.label}*`,
     keyboard: Markup.inlineKeyboard(rows),
   };
 }
@@ -73,15 +73,18 @@ export function productView(catId: string, prodId: string): AnyView | null {
   const rows =
     item.variants.length > 0
       ? item.variants.map((v) => [
-          Markup.button.callback(`${v.label} - ${v.price} EUR`, CB.addVariant(catId, prodId, v.id)),
+          Markup.button.callback(`${v.label} — ${v.price} EUR`, CB.addVariant(catId, prodId, v.id)),
         ])
       : [[Markup.button.callback('➕ Ajouter au panier', CB.addToCart(catId, prodId))]];
   rows.push([Markup.button.callback('⬅️ Retour', CB.category(catId))]);
   const keyboard = Markup.inlineKeyboard(rows);
 
   const priceLine =
-    item.variants.length > 0 ? `${features.variants.label} :` : `Prix : *${item.price} EUR*`;
-  const text = `*${item.label}*\n${item.description}\n\n${priceLine}`;
+    item.variants.length > 0
+      ? `Choisis : _${features.variants.label.toLowerCase()}_ (à partir de *${item.price} EUR*)`
+      : `*${item.price} EUR*`;
+  const desc = item.description ? `${item.description}\n\n` : '\n';
+  const text = `*${item.label}*\n${desc}${priceLine}`;
 
   if (item.image) {
     return { photo: imagePath(item.image), caption: text, keyboard };
@@ -95,7 +98,7 @@ export function cartView(userId: number): View {
 
   if (lines.length === 0) {
     return {
-      text: '🛒 *Ton panier est vide.*',
+      text: '🛒 *Ton panier est vide.*\n\nParcours le menu pour ajouter des articles.',
       keyboard: Markup.inlineKeyboard([
         [Markup.button.callback('⬅️ Retour au menu', CB.home())],
       ]),
@@ -103,7 +106,7 @@ export function cartView(userId: number): View {
   }
 
   const body = lines
-    .map((l) => `- ${l.label} x ${l.qty}  =  ${l.price * l.qty} EUR`)
+    .map((l) => `•  ${l.label}  ×${l.qty}  —  ${l.price * l.qty} EUR`)
     .join('\n');
 
   // Une ligne de boutons par article : ➖  "label x qty"  ➕  🗑

@@ -88,8 +88,9 @@ async function render(ctx: BotContext, view: AnyView): Promise<void> {
 }
 
 bot.start(async (ctx) => {
-  // removeKeyboard : nettoie un eventuel clavier personnalise laisse par une ancienne version.
-  await ctx.reply('Bienvenue ! 👋 Voici notre menu du jour.', Markup.removeKeyboard());
+  // removeKeyboard : nettoie un eventuel clavier personnalise laisse par une ancienne
+  // version. Message court et separe (le nom de la boutique arrive avec le menu).
+  await ctx.reply('👋 Bienvenue !', Markup.removeKeyboard());
   await render(ctx, categoriesView());
 });
 
@@ -98,14 +99,19 @@ bot.command('panier', async (ctx) => {
 });
 
 bot.help(async (ctx) => {
-  await ctx.reply(
-    '/start - afficher le menu\n/panier - voir mon panier\n/mes_commandes - mon historique',
-  );
+  const lines = [
+    '/start — afficher le menu',
+    '/panier — voir mon panier',
+    '/mes_commandes — mon historique de commandes',
+  ];
+  if (features.loyalty.enabled) lines.push('/fidelite — mes points de fidélité');
+  if (features.referral.enabled) lines.push('/parrainage — mon code de parrainage');
+  await ctx.reply(lines.join('\n'));
 });
 
 // Helper de configuration : donne son propre user_id (a mettre dans ADMIN_IDS).
 bot.command('id', async (ctx) => {
-  await ctx.reply(`Ton user_id Telegram : ${userId(ctx)}`);
+  await ctx.reply(`Ton identifiant Telegram : ${userId(ctx)}`);
 });
 
 bot.command('mes_commandes', async (ctx) => {
@@ -117,11 +123,11 @@ bot.command('mes_commandes', async (ctx) => {
   const text = orders
     .slice(0, 10)
     .map((o) => {
-      const items = o.items.map((l) => `${l.label} x${l.qty}`).join(', ');
-      return `#${o.id} - ${o.total} EUR - ${statusLabel(o.status)}\n${items}\n${o.created_at}`;
+      const items = o.items.map((l) => `${l.label} ×${l.qty}`).join(', ');
+      return `*#${o.id}* · _${statusLabel(o.status)}_\n${items}\n${o.total} EUR — ${o.created_at}`;
     })
     .join('\n\n');
-  await ctx.reply(`Tes dernieres commandes :\n\n${text}`);
+  await ctx.reply(`*Tes dernières commandes*\n\n${text}`, { parse_mode: 'Markdown' });
 });
 
 if (features.loyalty.enabled) {

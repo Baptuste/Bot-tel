@@ -26,13 +26,12 @@ export const quantityScene = new Scenes.BaseScene<BotContext>(QUANTITY_SCENE_ID)
 quantityScene.enter(async (ctx) => {
   const { label } = ctx.scene.state as QuantityState;
   await ctx.reply(
-    `Combien de « ${label} » ?\n` +
-      `Envoie un nombre entre ${MIN_QTY} et ${MAX_QTY} (ou /annuler).`,
+    `Combien de « ${label} » ? Envoie un nombre de ${MIN_QTY} à ${MAX_QTY}, ou /annuler.`,
   );
 });
 
 quantityScene.command('annuler', async (ctx) => {
-  await ctx.reply('Ajout annule.');
+  await ctx.reply('Ajout annulé.');
   await ctx.scene.leave();
 });
 
@@ -51,13 +50,14 @@ quantityScene.on(message('text'), async (ctx) => {
   const { catId, prodId, variantId, label, price } = ctx.scene.state as QuantityState;
   const uid = userId(ctx);
   addToCart(uid, { catId, prodId, variantId, label, price }, qty);
-
-  await ctx.reply(`✅ ${qty} x ${label} ajoute au panier.`);
   await ctx.scene.leave();
 
-  // On enchaine directement sur le recapitulatif du panier.
+  // Un seul message : confirmation + recapitulatif du panier + bouton valider.
   const view = cartView(uid);
-  await ctx.reply(view.text, { parse_mode: 'Markdown', ...view.keyboard });
+  await ctx.reply(`✅ *${qty} × ${label}* ajouté au panier.\n\n${view.text}`, {
+    parse_mode: 'Markdown',
+    ...view.keyboard,
+  });
 });
 
 // Tout autre type de message pendant la scene.
