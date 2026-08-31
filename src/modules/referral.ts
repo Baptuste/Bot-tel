@@ -125,7 +125,7 @@ export function previewCheckout(userId: number, cartTotal: number): CheckoutPrev
     if (d > 0) {
       discount += d;
       filleul = { rowId: filleulRow.id, discount: d };
-      lines.push(`Parrainage (bienvenue) : -${d} EUR`);
+      lines.push(`Parrainage (bienvenue) : -${d} €`);
     }
   }
 
@@ -141,7 +141,7 @@ export function previewCheckout(userId: number, cartTotal: number): CheckoutPrev
     discount += take;
     used += take;
   }
-  if (used > 0) lines.push(`Parrainage (merci !) : -${used} EUR`);
+  if (used > 0) lines.push(`Parrainage (merci !) : -${used} €`);
 
   return { discount, lines, filleul, parrainConsume };
 }

@@ -127,7 +127,7 @@ export function ordersRouter(telegram: Telegram): Router {
       await safeSend(
         telegram,
         updated.user_id,
-        `✏️ Ta commande #${updated.id} a ete mise a jour. Nouveau total : ${updated.total} EUR.`,
+        `✏️ Ta commande #${updated.id} a été mise à jour. Nouveau total : ${updated.total} €.`,
       );
     }
     res.json({ order: updated ? toDto(updated) : null });

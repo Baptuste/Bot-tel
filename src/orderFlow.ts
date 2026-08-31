@@ -102,7 +102,7 @@ function customerFlag(userId: number): string {
 
 /** Rendu texte d'une commande (notifications admin). */
 export function renderOrderText(o: Order): string {
-  const items = o.items.map((l) => `  •  ${l.label} ×${l.qty}   ${l.price * l.qty} EUR`).join('\n');
+  const items = o.items.map((l) => `  •  ${l.label} ×${l.qty}   ${l.price * l.qty} €`).join('\n');
   const who = o.username ? `@${o.username}` : `id ${o.user_id}`;
   return (
     `Commande #${o.id} — ${statusLabel(o.status)}\n` +
@@ -112,7 +112,7 @@ export function renderOrderText(o: Order): string {
     (o.address ? `📍 ${o.address}\n` : '🏬 Retrait en boutique\n') +
     (o.delivery_note ? `📝 ${o.delivery_note}\n` : '') +
     `\n${items}\n` +
-    `Total : ${o.total} EUR\n` +
+    `Total : ${o.total} €\n` +
     loyaltyFlag(o.user_id) +
     (o.cancellation_reason ? `⚠️ Annulation : ${o.cancellation_reason}\n` : '') +
     `\nPassée le ${o.created_at} UTC`

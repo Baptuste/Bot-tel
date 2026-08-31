@@ -53,7 +53,7 @@ export function categoryView(catId: string): View | null {
 
   const rows = Object.entries(cat.items).map(([prodId, item]) => [
     Markup.button.callback(
-      `${item.label} — ${item.variants.length > 0 ? 'dès ' : ''}${item.price} EUR`,
+      `${item.label} — ${item.variants.length > 0 ? 'dès ' : ''}${item.price} €`,
       CB.product(catId, prodId),
     ),
   ]);
@@ -73,7 +73,7 @@ export function productView(catId: string, prodId: string): AnyView | null {
   const rows =
     item.variants.length > 0
       ? item.variants.map((v) => [
-          Markup.button.callback(`${v.label} — ${v.price} EUR`, CB.addVariant(catId, prodId, v.id)),
+          Markup.button.callback(`${v.label} — ${v.price} €`, CB.addVariant(catId, prodId, v.id)),
         ])
       : [[Markup.button.callback('➕ Ajouter au panier', CB.addToCart(catId, prodId))]];
   rows.push([Markup.button.callback('⬅️ Retour', CB.category(catId))]);
@@ -81,8 +81,8 @@ export function productView(catId: string, prodId: string): AnyView | null {
 
   const priceLine =
     item.variants.length > 0
-      ? `Choisis : _${features.variants.label.toLowerCase()}_ (à partir de *${item.price} EUR*)`
-      : `*${item.price} EUR*`;
+      ? `Choisis : _${features.variants.label.toLowerCase()}_ (à partir de *${item.price} €*)`
+      : `*${item.price} €*`;
   const desc = item.description ? `${item.description}\n\n` : '\n';
   const text = `*${item.label}*\n${desc}${priceLine}`;
 
@@ -106,7 +106,7 @@ export function cartView(userId: number): View {
   }
 
   const body = lines
-    .map((l) => `•  ${l.label}  ×${l.qty}  —  ${l.price * l.qty} EUR`)
+    .map((l) => `•  ${l.label}  ×${l.qty}  —  ${l.price * l.qty} €`)
     .join('\n');
 
   // Une ligne de boutons par article : ➖  "label x qty"  ➕  🗑
@@ -121,7 +121,7 @@ export function cartView(userId: number): View {
   });
 
   return {
-    text: `🛒 *Ton panier*\n\n${body}\n\n*Total : ${cartTotal(userId)} EUR*`,
+    text: `🛒 *Ton panier*\n\n${body}\n\n*Total : ${cartTotal(userId)} €*`,
     keyboard: Markup.inlineKeyboard([
       ...lineRows,
       [Markup.button.callback('✅ Valider la commande', CB.startCheckout())],

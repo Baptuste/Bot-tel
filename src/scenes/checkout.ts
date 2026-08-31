@@ -290,7 +290,7 @@ async function promptSlot(ctx: BotContext): Promise<void> {
 const collectSlot = new Composer<BotContext>();
 
 collectSlot.action(/^slot:(any|\d+)$/, async (ctx) => {
-  await ctx.answerCbQuery();
+  await ctx.answerCbQuery('Créneau choisi');
   await stripButtons(ctx);
 
   const raw = ctx.match?.[1] ?? 'any';
@@ -387,14 +387,14 @@ async function promptConfirm(ctx: BotContext): Promise<void> {
   const uid = userId(ctx);
   const lines = getCart(uid);
   const s = state(ctx);
-  const body = lines.map((l) => `•  ${l.label}  ×${l.qty}  —  ${l.price * l.qty} EUR`).join('\n');
+  const body = lines.map((l) => `•  ${l.label}  ×${l.qty}  —  ${l.price * l.qty} €`).join('\n');
 
   const subtotal = cartTotal(uid);
   const ref = features.referral.enabled ? previewReferral(uid, subtotal) : null;
   const totalBlock =
     ref && ref.discount > 0
-      ? `Sous-total : ${subtotal} EUR\n${ref.lines.join('\n')}\nTOTAL : ${subtotal - ref.discount} EUR\n`
-      : `TOTAL : ${subtotal} EUR\n`;
+      ? `Sous-total : ${subtotal} €\n${ref.lines.join('\n')}\nTOTAL : ${subtotal - ref.discount} €\n`
+      : `TOTAL : ${subtotal} €\n`;
 
   await ctx.reply(
     `${stepHeader('confirm', 'Récapitulatif')}\n\n` +
@@ -418,7 +418,7 @@ async function promptConfirm(ctx: BotContext): Promise<void> {
 const confirmStep = new Composer<BotContext>();
 
 confirmStep.action('order:confirm', async (ctx) => {
-  await ctx.answerCbQuery();
+  await ctx.answerCbQuery('Commande envoyée !');
 
   const uid = userId(ctx);
   const { address, phone, routeId, slotLabel, deliveryNote } = state(ctx);
@@ -478,7 +478,7 @@ confirmStep.action('order:confirm', async (ctx) => {
       await ctx.telegram
         .sendMessage(
           parrainToNotify,
-          `🎁 Ton filleul vient de passer sa première commande ! ${features.referral.parrainReward} EUR pour toi sur ta prochaine commande.`,
+          `🎁 Ton filleul vient de passer sa première commande ! ${features.referral.parrainReward} € pour toi sur ta prochaine commande.`,
         )
         .catch(() => undefined);
     }
@@ -487,7 +487,7 @@ confirmStep.action('order:confirm', async (ctx) => {
   await ctx.editMessageText(
     `✅ Commande #${orderId} enregistrée !\n\n` +
       (ref && ref.discount > 0
-        ? `Réduction parrainage : -${ref.discount} EUR — total ${total} EUR\n`
+        ? `Réduction parrainage : -${ref.discount} € — total ${total} €\n`
         : '') +
       (features.deliverySlots.enabled ? `🕒 ${slotLabel ?? 'au plus tôt'}\n` : '') +
       `\nStatut : ${statusLabel(initialStatusId())}.\n` +

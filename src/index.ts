@@ -124,7 +124,7 @@ bot.command('mes_commandes', async (ctx) => {
     .slice(0, 10)
     .map((o) => {
       const items = o.items.map((l) => `${l.label} ×${l.qty}`).join(', ');
-      return `*#${o.id}* · _${statusLabel(o.status)}_\n${items}\n${o.total} EUR — ${o.created_at}`;
+      return `*#${o.id}* · _${statusLabel(o.status)}_\n${items}\n${o.total} € — ${o.created_at}`;
     })
     .join('\n\n');
   await ctx.reply(`*Tes dernières commandes*\n\n${text}`, { parse_mode: 'Markdown' });
@@ -158,7 +158,7 @@ if (features.referral.enabled) {
       const res = registerFilleul(uid, arg);
       await ctx.reply(
         res.ok
-          ? `✅ Code accepté ! ${referralInfo(uid).filleulDiscount} EUR de réduction sur ta première commande.`
+          ? `✅ Code accepté ! ${referralInfo(uid).filleulDiscount} € de réduction sur ta première commande.`
           : `❌ ${REGISTER_ERR[res.reason] ?? 'Code refusé.'}`,
       );
       return;
@@ -166,13 +166,13 @@ if (features.referral.enabled) {
     const info = referralInfo(uid);
     const parts = [
       `👥 *Parrainage*\n\nTon code : *${info.code}*`,
-      `Partage-le : à sa 1re commande avec ton code, ton filleul a ${info.filleulDiscount} EUR ` +
-        `de réduction, et toi ${info.parrainReward} EUR sur ta commande suivante.`,
+      `Partage-le : à sa 1re commande avec ton code, ton filleul a ${info.filleulDiscount} € ` +
+        `de réduction, et toi ${info.parrainReward} € sur ta commande suivante.`,
     ];
     if (info.filleulsCompleted > 0) parts.push(`Filleuls actifs : ${info.filleulsCompleted}.`);
     if (info.creditAvailable > 0) {
       parts.push(
-        `🎁 Tu as ${info.creditAvailable} EUR de crédit parrain, appliqué à ta prochaine commande.`,
+        `🎁 Tu as ${info.creditAvailable} € de crédit parrain, appliqué à ta prochaine commande.`,
       );
     }
     await ctx.reply(parts.join('\n\n'), { parse_mode: 'Markdown' });
@@ -182,8 +182,8 @@ if (features.referral.enabled) {
 // Commandes + listener admin (gates par ADMIN_IDS).
 registerAdmin(bot);
 
-// Bouton "libelle" du panier : sans action, on acquitte juste le clic.
-bot.action('noop', (ctx) => ctx.answerCbQuery());
+// Bouton "libelle" du panier : pas d'action, on explique juste les commandes voisines.
+bot.action('noop', (ctx) => ctx.answerCbQuery('Utilise ➖ / ➕ pour ajuster la quantité'));
 
 // --- Un SEUL listener generique pour toute la navigation par boutons ---
 bot.action(CALLBACK_PATTERN, async (ctx) => {
