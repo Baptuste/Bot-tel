@@ -35,7 +35,6 @@ import { createOrder, getLastOrder, getOrder } from '../orders';
 import { getAvailableSlots, hasUpcomingSlots, type Slot } from '../routes';
 import { features } from '../features';
 import { esc, receiptBlock } from '../views';
-import { orderTicketPng } from '../render/cards';
 
 export const CHECKOUT_SCENE_ID = 'checkout';
 
@@ -493,16 +492,16 @@ confirmStep.action('order:confirm', async (ctx) => {
     }
   }
 
-  const ticketLines = [
+  const detail = [
     ...(ref && ref.discount > 0 ? [`Payé : ${total} € (−${ref.discount} € parrainage)`] : []),
     ...(features.deliverySlots.enabled ? [`Créneau : ${slotLabel ?? 'au plus tôt'}`] : []),
-    "On te prévient dès qu'elle est confirmée.",
   ];
-  // Le recu de commande est une IMAGE -> on retire le recap texte et on l'envoie.
-  await ctx.deleteMessage().catch(() => undefined);
-  await ctx.replyWithPhoto(
-    { source: orderTicketPng(orderId, statusLabel(initialStatusId()), ticketLines) },
-    { caption: `<b>✓ Commande #${orderId} enregistrée.</b> Merci ! 🙏`, parse_mode: 'HTML' },
+  await ctx.editMessageText(
+    `✅ <b>Commande #${orderId} — enregistrée</b>\n` +
+      `<i>${esc(statusLabel(initialStatusId()))}.</i>\n` +
+      (detail.length > 0 ? `${esc(detail.join('\n'))}\n` : '') +
+      "\nOn te prévient dès qu'elle est confirmée. Merci ! 🙏",
+    { parse_mode: 'HTML' },
   );
   await ctx.scene.leave();
 

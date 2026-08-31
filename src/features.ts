@@ -46,6 +46,12 @@ export interface OrderFlowConfig {
  * Pipeline « livraison à domicile » — reproduit EXACTEMENT la machine d'origine
  * (pending → confirmed → delivering → delivered, + cancelled).
  */
+/*
+ * Gabarit des notifications client (parse_mode HTML, gere par orderFlow.ts) :
+ *   <emoji> <b>Commande #{id} — <statut></b>
+ *   <detail utile>
+ * Une seule voix pour toutes les transitions -> flux scannable en une seconde.
+ */
 export const DELIVERY_FLOW: OrderFlowConfig = {
   stages: [
     {
@@ -55,7 +61,7 @@ export const DELIVERY_FLOW: OrderFlowConfig = {
       shortLabel: 'En attente',
       cancelLabel: '❌ Refuser',
       cancelMessage:
-        "❌ Ta commande #{id} n'a pas pu être acceptée. Contacte-nous pour en savoir plus.",
+        '❌ <b>Commande #{id} — refusée</b>\nContacte-nous pour en savoir plus.',
     },
     {
       id: 'confirmed',
@@ -63,9 +69,11 @@ export const DELIVERY_FLOW: OrderFlowConfig = {
       label: 'confirmée',
       shortLabel: 'Confirmée',
       advanceLabel: '✅ Confirmer',
-      arrivalMessage: '✅ Ta commande #{id} est confirmée !\nLivraison estimée dans ~45 min.',
+      arrivalMessage:
+        '✅ <b>Commande #{id} — confirmée</b>\nLivraison estimée dans ~45 min.',
       cancelLabel: '❌ Annuler',
-      cancelMessage: '❌ Ta commande #{id} a été annulée. Contacte-nous pour en savoir plus.',
+      cancelMessage:
+        '❌ <b>Commande #{id} — annulée</b>\nContacte-nous pour en savoir plus.',
     },
     {
       id: 'delivering',
@@ -73,9 +81,10 @@ export const DELIVERY_FLOW: OrderFlowConfig = {
       label: 'en cours de livraison',
       shortLabel: 'En livraison',
       advanceLabel: '🛵 En livraison',
-      arrivalMessage: '🛵 Ta commande #{id} est en route !',
+      arrivalMessage: '🛵 <b>Commande #{id} — en route</b>',
       cancelLabel: '❌ Souci',
-      cancelMessage: '❌ Ta commande #{id} a été annulée. Contacte-nous pour en savoir plus.',
+      cancelMessage:
+        '❌ <b>Commande #{id} — annulée</b>\nContacte-nous pour en savoir plus.',
     },
     {
       id: 'delivered',
@@ -83,7 +92,7 @@ export const DELIVERY_FLOW: OrderFlowConfig = {
       label: 'livrée',
       shortLabel: 'Livrée',
       advanceLabel: '📦 Livrée',
-      arrivalMessage: '📦 Ta commande #{id} a été livrée. Bon appétit ! 🍽️',
+      arrivalMessage: '📦 <b>Commande #{id} — livrée</b>\nBon appétit ! 🍽️',
     },
     { id: 'cancelled', role: 'cancelled', label: 'annulée', shortLabel: 'Annulée' },
   ],
@@ -99,7 +108,7 @@ export const PICKUP_FLOW: OrderFlowConfig = {
       shortLabel: 'En attente',
       cancelLabel: '❌ Refuser',
       cancelMessage:
-        "❌ Ta commande #{id} n'a pas pu être acceptée. Contacte-nous pour en savoir plus.",
+        '❌ <b>Commande #{id} — refusée</b>\nContacte-nous pour en savoir plus.',
     },
     {
       id: 'confirmed',
@@ -108,9 +117,10 @@ export const PICKUP_FLOW: OrderFlowConfig = {
       shortLabel: 'Confirmée',
       advanceLabel: '✅ Confirmer',
       arrivalMessage:
-        "✅ Ta commande #{id} est confirmée ! On te prévient dès qu'elle est prête.",
+        "✅ <b>Commande #{id} — confirmée</b>\nOn te prévient dès qu'elle est prête.",
       cancelLabel: '❌ Annuler',
-      cancelMessage: '❌ Ta commande #{id} a été annulée. Contacte-nous pour en savoir plus.',
+      cancelMessage:
+        '❌ <b>Commande #{id} — annulée</b>\nContacte-nous pour en savoir plus.',
     },
     {
       id: 'ready',
@@ -118,9 +128,10 @@ export const PICKUP_FLOW: OrderFlowConfig = {
       label: 'prête à être retirée',
       shortLabel: 'Prête',
       advanceLabel: '📦 Prête',
-      arrivalMessage: '📦 Ta commande #{id} est prête ! Tu peux venir la retirer.',
+      arrivalMessage: '📦 <b>Commande #{id} — prête</b>\nTu peux venir la retirer.',
       cancelLabel: '❌ Souci',
-      cancelMessage: '❌ Ta commande #{id} a été annulée. Contacte-nous pour en savoir plus.',
+      cancelMessage:
+        '❌ <b>Commande #{id} — annulée</b>\nContacte-nous pour en savoir plus.',
     },
     {
       id: 'collected',
@@ -128,7 +139,7 @@ export const PICKUP_FLOW: OrderFlowConfig = {
       label: 'retirée',
       shortLabel: 'Retirée',
       advanceLabel: '✅ Retirée',
-      arrivalMessage: '✅ Ta commande #{id} a bien été retirée. À bientôt !',
+      arrivalMessage: '✅ <b>Commande #{id} — retirée</b>\nÀ bientôt !',
     },
     { id: 'cancelled', role: 'cancelled', label: 'annulée', shortLabel: 'Annulée' },
   ],

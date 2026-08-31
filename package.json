@@ -22,7 +22,6 @@
     "tunnel": "cloudflared tunnel --url http://localhost:3000"
   },
   "dependencies": {
-    "@resvg/resvg-js": "^2.6.2",
     "better-sqlite3": "^11.10.0",
     "dotenv": "^16.4.5",
     "express": "^4.22.2",

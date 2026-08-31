@@ -154,7 +154,10 @@ export async function changeStatus(
 
   const updated = updateOrderStatus(orderId, to, meta);
   if (updated) {
-    await safeSend(telegram, updated.user_id, transition.clientMsg(updated));
+    // clientMsg est du HTML (gabarit de notification, cf. features.ts).
+    await safeSend(telegram, updated.user_id, transition.clientMsg(updated), {
+      parse_mode: 'HTML',
+    });
     if (features.loyalty.enabled && stageById(to)?.role === 'fulfilled') {
       await awardLoyalty(telegram, updated);
     }
@@ -166,11 +169,13 @@ export async function changeStatus(
 async function awardLoyalty(telegram: Telegram, order: Order): Promise<void> {
   const { status, crossedThreshold } = awardForOrder(order.user_id);
   if (crossedThreshold) {
+    const reward = status.rewardLabel.replace(/[<>&]/g, '');
     await safeSend(
       telegram,
       order.user_id,
-      `🎉 ${status.points} points de fidélité ! Tu as débloqué : ${status.rewardLabel}.\n` +
+      `🎉 <b>+${status.points} points de fidélité</b>\nTu as débloqué : ${reward}. ` +
         'Signale-le à ta prochaine commande.',
+      { parse_mode: 'HTML' },
     );
   }
 }

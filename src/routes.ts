@@ -337,13 +337,15 @@ export async function notifyRouteProgress(telegram: Telegram, routeId: number): 
   const remaining = getOrdersByRoute(routeId).filter((o) => o.status === fulfillingId);
   for (let i = 0; i < remaining.length && i < 3; i++) {
     const o = remaining[i]!;
-    const msg =
+    const tail =
       i === 0
-        ? `🛵 Commande #${o.id} : tu es le prochain arrêt ! Prépare-toi à la réceptionner.`
+        ? 'tu es le prochain arrêt ! Prépare-toi à la réceptionner.'
         : i === 1
-          ? `🛵 Commande #${o.id} : plus qu'un arrêt avant toi.`
-          : `🛵 Commande #${o.id} : encore 2 arrêts avant toi.`;
-    await safeSend(telegram, o.user_id, msg);
+          ? "plus qu'un arrêt avant toi."
+          : 'encore 2 arrêts avant toi.';
+    await safeSend(telegram, o.user_id, `🛵 <b>Commande #${o.id}</b> — ${tail}`, {
+      parse_mode: 'HTML',
+    });
   }
 }
 

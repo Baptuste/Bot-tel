@@ -1,11 +1,12 @@
 /**
- * Les "vues" du bot client : a partir des donnees (menu, panier), on produit
- * soit un couple { text, keyboard }, soit une carte-image { photo, caption,
- * keyboard }. `render()` (index.ts) decide d'editer ou de renvoyer.
+ * Les "vues" du bot client : a partir des donnees (menu, panier), on produit un
+ * couple { text, keyboard } (ou { photo, caption, keyboard } pour une photo
+ * produit). `render()` (index.ts) decide d'editer le message existant ou d'en
+ * renvoyer un neuf.
  *
- * Identite visuelle : les ecrans principaux (carte d'une categorie, panier)
- * sont des IMAGES generees (src/render/cards.ts) — c'est la seule facon d'avoir
- * une vraie identite sur Telegram. Le texte HTML sert de complement / repli.
+ * Le bot est le PARCOURS DE REPLI + le canal de notifications : rendu texte
+ * sobre (parse_mode HTML — gras sur l'info cle). La vitrine riche, c'est la
+ * Mini App client.
  *
  * REGLE : toute chaine dynamique dans du HTML passe par esc().
  */
@@ -51,10 +52,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-/** Chemin de la banniere de la carte (envoyee sur /start). */
-export const MENU_BANNER = 'assets/menu-banner.png';
-
-/** En-tete de section : titre en gras. Le decor vient des blockquotes autour. */
+/** En-tete de section : titre en gras. */
 export function section(title: string): string {
   return `<b>${esc(title)}</b>`;
 }

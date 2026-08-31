@@ -193,7 +193,7 @@ try {
   }
   check('16 commandes confirmees + affectees', confirmed === 16);
   check('2 refus = annulation legitime (no_show = 0)', getOrdersByStatus('cancelled').every((o) => o.no_show === false));
-  check('16 notifs "confirmée"', countText('est confirmée') === 16);
+  check('16 notifs "confirmée"', countText('— confirmée') === 16);
 
   // Le patron reordonne 2 arrets dans la tournee de Karim.
   const r1o = listRoutes().find((r) => r.id === r1.id)!.orders;
@@ -303,9 +303,9 @@ try {
   const alice = getReliability(byName('Alice').uid);
   check('Alice : 1 livree, 0 no-show, taux 100%', alice.delivered === 1 && alice.noShow === 0 && alice.rate === 1);
 
-  check('14 notifs "a été livrée"', countText('a été livrée') === 14);
+  check('14 notifs "livrée"', countText('— livrée') === 14);
   check('16 notifs "Ton livreur : <nom>"', countText('Ton livreur : ') === 16);
-  check('2 notifs d\'annulation (no-shows)', countText('a été annulée') === 2);
+  check('2 notifs d\'annulation (no-shows)', countText('— annulée') === 2);
 
   // --- Nettoyage ---
   catalog.deleteCategory(pizzas.id);

@@ -171,9 +171,9 @@ try {
   const msgs = sent.filter((m) => m.chatId === USER && m.text.includes(`#${life}`)).map((m) => m.text);
   check(
     '  le client a recu "confirmée", "prête", "retirée"',
-    msgs.some((t) => t.includes('est confirmée')) &&
-      msgs.some((t) => t.includes('est prête')) &&
-      msgs.some((t) => t.includes('a bien été retirée')),
+    msgs.some((t) => t.includes('— confirmée')) &&
+      msgs.some((t) => t.includes('— prête')) &&
+      msgs.some((t) => t.includes('— retirée')),
   );
   check(
     '  "collected" compte comme une commande servie (dashboard + fiabilite)',
