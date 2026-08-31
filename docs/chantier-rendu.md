@@ -204,11 +204,13 @@ Typo : pile système pour la prose, **IBM Plex Mono** pour toute la donnée.
 | **7** | Feedback : `answerCbQuery` utiles (« Créneau choisi », « Commande envoyée ! »). Passage global **EUR → €** (bot + Mini App). | `76257a7` |
 | **8** | *Styliser davantage.* Mini App : **bandeau d'en-tête** (nom boutique, était absent), **barre de progression** des tournées (dashboard + carte), états vides calmes, effet d'appui. Bot : **panier + récap checkout en bloc monospace `\`\`\``** (colonnes alignées, points de conduite, TOTAL) — écho direct du docket. Le récap met tout dans le bloc → `parse_mode` réactivé sans risque de casse. | `a1b2783` |
 | **9** | *Identité visuelle du bot client* (jugé trop « menu basique »). Passage **parse_mode HTML** ; descriptions produits en `<blockquote>` ; boutons en **grille 2 colonnes** ; en-têtes d'étape checkout stylés ; commandes client en HTML. Helper `esc()` sur toute valeur dynamique. | `8c85e80` |
-| **10** | Le cartouche `<pre>` ASCII du Lot 9 était moche → **vraie bannière image** (`assets/menu-banner.png` : mono, tampon, bandeaux fantômes en fond, filet rouge, cadre) envoyée en photo sur `/start`, nom de la boutique en caption. `section()` = juste `<b>` (plus de filet `━━━`) ; le décor vient des `<blockquote>`. Confirmation de commande en `<blockquote>`. `letterhead()` supprimé. | `e271925` |
+| **10** | Le cartouche `<pre>` ASCII du Lot 9 était moche → **vraie bannière image** (`assets/menu-banner.png`) sur `/start`, nom de la boutique en caption. `section()` = `<b>` seul. | `e271925` |
+| — | Blockquotes (fond bleuté) jugées non conformes → italique + gras. | `d71d09a` |
+| **11** | *Le texte ne suffit pas.* Les écrans clés du bot deviennent des **cartes-images générées à la volée** : `@resvg/resvg-js` (WASM) rasterise du SVG composé à la main (IBM Plex Mono embarqué). `src/render/cards.ts` : **menuPagePng** (page de carte d'une catégorie), **receiptPng** (ticket de caisse pour le récap checkout), **orderTicketPng** (reçu tamponné pour la confirmation). Identité « bon de commande » : papier, encre, filet rouge, tampon, code-barres, bord déchiré. `categoryView` → image ; panier reste en `<pre>` (édition ± rapide). | `c4ea3ff` |
 
-**Reste possible plus tard** : `<blockquote expandable>` pour les longues
-descriptions ; bannière par client (générée) ; choix explicite du mode de
-paiement + pourboire au checkout (reliquat V2).
+**Reste possible plus tard** : police emoji monochrome pour les cartes ;
+carte-image pour le produit sans photo ; choix explicite du mode de paiement +
+pourboire au checkout (reliquat V2).
 
 Une fois ce chantier jugé satisfaisant : reprise de `feuille-de-route.md`
 (Partie 4 configurateur, module marketing).
