@@ -1,75 +1,45 @@
 import { useEffect, useState } from 'react';
 import { api } from './api';
-import { Catalog } from './Catalog';
-import { Customers } from './Customers';
-import { FeaturesContext } from './features';
-import { Orders } from './Orders';
-import { Routes } from './Routes';
+import { AdminApp } from './AdminApp';
+import { ClientApp } from './client/ClientApp';
 import { initData } from './telegram';
 import type { ClientFeatures } from './types';
 
-type Tab = 'orders' | 'routes' | 'catalog' | 'customers';
+/**
+ * Routeur : une seule Mini App, deux visages.
+ * `GET /api/features` répond 200 pour un admin, 403 (`not_admin`) sinon.
+ */
+type State =
+  | { mode: 'no-tg' }
+  | { mode: 'loading' }
+  | { mode: 'admin'; features: ClientFeatures }
+  | { mode: 'client' }
+  | { mode: 'error'; message: string };
 
 export function App() {
-  const [tab, setTab] = useState<Tab>('orders');
-  const [features, setFeatures] = useState<ClientFeatures | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<State>(initData ? { mode: 'loading' } : { mode: 'no-tg' });
 
   useEffect(() => {
     if (!initData) return;
     void api
       .features()
-      .then(setFeatures)
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+      .then((features) => setState({ mode: 'admin', features }))
+      .catch((e) => {
+        const message = e instanceof Error ? e.message : String(e);
+        setState(message === 'not_admin' ? { mode: 'client' } : { mode: 'error', message });
+      });
   }, []);
 
-  useEffect(() => {
-    if (features) document.title = `${features.displayName} · Admin`;
-  }, [features]);
-
-  if (!initData) {
-    return (
-      <div className="error">
-        Ouvre cette page depuis le bot Telegram (bouton &laquo; Ouvrir l'admin &raquo;).
-      </div>
-    );
+  switch (state.mode) {
+    case 'no-tg':
+      return <div className="error">Ouvre cette page depuis Telegram.</div>;
+    case 'loading':
+      return <p className="muted">Chargement…</p>;
+    case 'error':
+      return <div className="error">Chargement impossible : {state.message}</div>;
+    case 'admin':
+      return <AdminApp features={state.features} />;
+    case 'client':
+      return <ClientApp />;
   }
-
-  if (error) return <div className="error">Chargement impossible : {error}</div>;
-  if (!features) return <p className="muted">Chargement…</p>;
-
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'orders', label: 'Commandes' },
-    ...(features.deliverySlots.enabled ? [{ key: 'routes' as const, label: 'Tournées' }] : []),
-    { key: 'catalog', label: 'Catalogue' },
-    ...(features.reliability.enabled ? [{ key: 'customers' as const, label: 'Clients' }] : []),
-  ];
-
-  // La config a pu retirer l'onglet actuellement selectionne.
-  const active = tabs.some((t) => t.key === tab) ? tab : 'orders';
-
-  return (
-    <FeaturesContext.Provider value={features}>
-      <header className="appbar">
-        <span className="appbar__name">{features.displayName}</span>
-        <span className="appbar__tag">Admin</span>
-      </header>
-      <nav className="tabs">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            className={active === t.key ? 'active' : ''}
-            onClick={() => setTab(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
-      {active === 'orders' && <Orders />}
-      {active === 'routes' && <Routes />}
-      {active === 'catalog' && <Catalog />}
-      {active === 'customers' && <Customers />}
-    </FeaturesContext.Provider>
-  );
 }
