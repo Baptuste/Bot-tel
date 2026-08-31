@@ -6,6 +6,7 @@
  *    longtemps (une seule alerte par commande).
  */
 import type { Telegram } from 'telegraf';
+import { purgeCarts } from './cart';
 import { config } from './config';
 import { getOverduePendingIds, markAlerted, PENDING_ALERT_MINUTES } from './dashboard';
 import { features } from './features';
@@ -35,6 +36,8 @@ export function startScheduler(telegram: Telegram): void {
       if (features.deliverySlots.enabled) ensureUpcomingRoutes();
       const purged = purgeSessions();
       if (purged > 0) console.log(`[scheduler] ${purged} session(s) abandonnee(s) purgee(s).`);
+      const carts = purgeCarts();
+      if (carts > 0) console.log(`[scheduler] ${carts} ligne(s) de panier abandonne purgee(s).`);
     } catch (err) {
       console.error('[scheduler] tick horaire en erreur :', err);
     }

@@ -100,6 +100,20 @@ db.exec(`
     data        TEXT    NOT NULL,          -- JSON de l'objet session
     updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
   );
+
+  -- Panier : partage par le bot ET la Mini App client. Stocke des REFERENCES
+  -- (pas de libelle/prix fige) -> re-resolu au menu courant a chaque lecture.
+  -- Comme les sessions : ce n'est PAS une commande. Purge planifiee des paniers
+  -- abandonnes (scheduler).
+  CREATE TABLE IF NOT EXISTS cart (
+    user_id     INTEGER NOT NULL,
+    cat_id      TEXT    NOT NULL,
+    prod_id     TEXT    NOT NULL,
+    variant_id  TEXT    NOT NULL DEFAULT '',
+    qty         INTEGER NOT NULL,
+    updated_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, cat_id, prod_id, variant_id)
+  );
 `);
 
 // --- Migrations additives pour les bases deja creees ---------------------

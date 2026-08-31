@@ -432,13 +432,10 @@ confirmStep.action('order:confirm', async (ctx) => {
   const { address, phone, routeId, slotLabel, deliveryNote } = state(ctx);
 
   // Un produit / une taille a pu devenir indisponible, ou un prix changer.
-  const { removed, repriced } = reconcileCart(uid);
+  const { removed } = reconcileCart(uid);
   if (removed.length > 0) {
-    const names = removed.map((l) => `« ${l.label} »`).join(', ');
+    const names = removed.map((l) => `« ${l} »`).join(', ');
     await ctx.reply(`⚠️ ${names} n'est plus disponible — on l'a retiré de ton panier.`);
-  }
-  if (repriced.length > 0) {
-    await ctx.reply('ℹ️ Certains prix ont changé — vérifie le total avant de valider.');
   }
 
   const lines = getCart(uid);
@@ -454,8 +451,8 @@ confirmStep.action('order:confirm', async (ctx) => {
     return;
   }
 
-  // Prix / produits ont bouge -> on renvoie vers le recap plutot que de valider a l'aveugle.
-  if (removed.length > 0 || repriced.length > 0) {
+  // Un produit a ete retire -> on renvoie vers le recap plutot que de valider a l'aveugle.
+  if (removed.length > 0) {
     await promptConfirm(ctx);
     return; // on reste sur l'etape confirmation
   }

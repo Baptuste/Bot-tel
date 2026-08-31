@@ -48,9 +48,9 @@ quantityScene.on(message('text'), async (ctx) => {
     return;
   }
 
-  const { catId, prodId, variantId, label, price } = ctx.scene.state as QuantityState;
+  const { catId, prodId, variantId, label } = ctx.scene.state as QuantityState;
   const uid = userId(ctx);
-  addToCart(uid, { catId, prodId, variantId, label, price }, qty);
+  addToCart(uid, { catId, prodId, variantId }, qty);
   await ctx.scene.leave();
 
   // Un seul message : confirmation + recapitulatif du panier + bouton valider.
