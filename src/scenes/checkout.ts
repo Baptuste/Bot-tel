@@ -66,7 +66,10 @@ function stepHeader(key: string, title: string): string {
 function slotButtonLabel(s: Slot): string {
   const when = s.when === 'today' ? "aujourd'hui" : 'demain';
   // On ne montre le compteur que quand il commence a se remplir (evite le bruit).
-  const left = s.remaining !== null && s.remaining <= 3 ? ` (${s.remaining} places)` : '';
+  const left =
+    s.remaining !== null && s.remaining <= 3
+      ? ` — ${s.remaining} place${s.remaining > 1 ? 's' : ''}`
+      : '';
   return `🕒 ${s.time} ${when}${left}`;
 }
 
@@ -135,7 +138,7 @@ async function goToConfirm(ctx: BotContext): Promise<void> {
 async function askAddress(ctx: BotContext): Promise<void> {
   const uid = userId(ctx);
   if (getCart(uid).length === 0) {
-    await ctx.reply('Ton panier est vide. Ajoute des produits avec /start.');
+    await ctx.reply('Ton panier est vide. Tape /start pour parcourir le menu.');
     await ctx.scene.leave();
     return;
   }
@@ -154,30 +157,52 @@ async function askAddress(ctx: BotContext): Promise<void> {
     return;
   }
 
+  // Client connu : on propose de tout reprendre en un tap (adresse + numero, et
+  // le numero seul saute directement l'etape telephone).
+  const reuseRows = [
+    ...(lastAddress && lastPhone && features.requiresPhone
+      ? [[Markup.button.callback('⚡ Mêmes adresse et numéro', 'co:reuse')]]
+      : []),
+    ...(lastAddress
+      ? [[Markup.button.callback(`📍 ${shorten(lastAddress, 40)}`, 'co:addr')]]
+      : []),
+  ];
+
   await ctx.reply(
     `${stepHeader('address', 'Adresse de livraison')}\n\n` +
       (lastAddress
-        ? 'Reutilise ta derniere adresse (bouton) ou tape une nouvelle adresse.'
-        : 'Indique ton adresse complete (rue, numero, ville).') +
-      '\n(/annuler pour abandonner)',
-    lastAddress
-      ? Markup.inlineKeyboard([
-          [Markup.button.callback(`📍 ${shorten(lastAddress, 45)}`, 'co:addr')],
-        ])
-      : undefined,
+        ? 'Reprends ta dernière adresse ci-dessous, ou tape la nouvelle.'
+        : 'Indique ton adresse complète (rue, numéro, ville).') +
+      '\n\n_/annuler pour abandonner._',
+    reuseRows.length > 0
+      ? { parse_mode: 'Markdown', ...Markup.inlineKeyboard(reuseRows) }
+      : { parse_mode: 'Markdown' },
   );
   ctx.wizard.selectStep(STEP.collectAddress);
 }
 
 const collectAddress = new Composer<BotContext>();
 
+collectAddress.action('co:reuse', async (ctx) => {
+  const s = state(ctx);
+  if (!s.lastAddress || !s.lastPhone) {
+    await ctx.answerCbQuery('Infos indisponibles, saisis-les');
+    return;
+  }
+  await ctx.answerCbQuery('Adresse et numéro repris');
+  await stripButtons(ctx);
+  s.address = s.lastAddress;
+  s.phone = s.lastPhone;
+  await goToSlot(ctx); // saute l'etape telephone
+});
+
 collectAddress.action('co:addr', async (ctx) => {
   const last = state(ctx).lastAddress;
   if (!last) {
-    await ctx.answerCbQuery('Aucune adresse memorisee');
+    await ctx.answerCbQuery('Aucune adresse mémorisée');
     return;
   }
-  await ctx.answerCbQuery('Adresse reutilisee');
+  await ctx.answerCbQuery('Adresse reprise');
   await stripButtons(ctx);
   state(ctx).address = last;
   await goToPhone(ctx);
@@ -186,7 +211,7 @@ collectAddress.action('co:addr', async (ctx) => {
 collectAddress.on(message('text'), async (ctx) => {
   const text = ctx.message.text.trim();
   if (text.length < 5) {
-    await ctx.reply('Adresse trop courte. Precise rue, numero et ville.');
+    await ctx.reply('Adresse trop courte — précise la rue, le numéro et la ville.');
     return;
   }
   state(ctx).address = text;
@@ -194,7 +219,7 @@ collectAddress.on(message('text'), async (ctx) => {
 });
 
 collectAddress.on('message', async (ctx) => {
-  await ctx.reply('Tape ton adresse en toutes lettres, ou utilise le bouton.');
+  await ctx.reply('Tape ton adresse en toutes lettres, ou utilise un bouton.');
 });
 
 // ---------------------------------------------------------------------------
@@ -204,11 +229,10 @@ collectAddress.on('message', async (ctx) => {
 async function promptPhone(ctx: BotContext): Promise<void> {
   const last = state(ctx).lastPhone;
   await ctx.reply(
-    `${stepHeader('phone', 'Telephone')}\n\n` +
+    `${stepHeader('phone', 'Téléphone')}\n\n` +
       (last
-        ? 'Reutilise ton dernier numero (bouton) ou tape-en un nouveau.'
-        : 'Indique ton numero de telephone (ex : 06 12 34 56 78).') +
-      '\nIl permet de te joindre pour la commande.',
+        ? 'Reprends ton dernier numéro ci-dessous, ou tape le nouveau.'
+        : 'Ton numéro de téléphone (ex : 06 12 34 56 78) — il sert à te joindre pour la livraison.'),
     last ? Markup.inlineKeyboard([[Markup.button.callback(`📞 ${last}`, 'co:phone')]]) : undefined,
   );
 }
@@ -221,7 +245,7 @@ collectPhone.action('co:phone', async (ctx) => {
     await ctx.answerCbQuery('Aucun numero memorise');
     return;
   }
-  await ctx.answerCbQuery('Numero reutilise');
+  await ctx.answerCbQuery('Numéro repris');
   await stripButtons(ctx);
   state(ctx).phone = last;
   await goToSlot(ctx);
@@ -230,7 +254,7 @@ collectPhone.action('co:phone', async (ctx) => {
 collectPhone.on(message('text'), async (ctx) => {
   const phone = ctx.message.text.trim();
   if (!PHONE_RE.test(phone)) {
-    await ctx.reply('Numero invalide. Indique un numero valide (ex : 06 12 34 56 78).');
+    await ctx.reply('Numéro non reconnu — indique-le sous la forme 06 12 34 56 78.');
     return;
   }
   state(ctx).phone = phone;
@@ -238,7 +262,7 @@ collectPhone.on(message('text'), async (ctx) => {
 });
 
 collectPhone.on('message', async (ctx) => {
-  await ctx.reply('Tape un numero de telephone, ou utilise le bouton.');
+  await ctx.reply('Tape ton numéro de téléphone, ou utilise le bouton.');
 });
 
 // ---------------------------------------------------------------------------
@@ -248,16 +272,19 @@ collectPhone.on('message', async (ctx) => {
 async function promptSlot(ctx: BotContext): Promise<void> {
   const slots = getAvailableSlots();
   const rows = slots.map((s) => [Markup.button.callback(slotButtonLabel(s), `slot:${s.routeId}`)]);
-  rows.push([Markup.button.callback('Peu importe (au plus tot)', 'slot:any')]);
+  rows.push([Markup.button.callback('Peu importe — au plus tôt', 'slot:any')]);
 
   const intro =
     slots.length > 0
-      ? 'Choisis quand tu veux etre livre :'
+      ? 'Choisis ton créneau de livraison :'
       : hasUpcomingSlots()
-        ? 'Tous les creneaux sont complets pour le moment. On te livrera au plus tot.'
-        : 'Aucun creneau programme pour le moment. On te livrera au plus tot.';
+        ? 'Tous les créneaux sont complets pour le moment — on te livrera au plus tôt.'
+        : 'Aucun créneau programmé pour le moment — on te livrera au plus tôt.';
 
-  await ctx.reply(`${stepHeader('slot', 'Creneau de livraison')}\n\n${intro}`, Markup.inlineKeyboard(rows));
+  await ctx.reply(
+    `${stepHeader('slot', 'Créneau de livraison')}\n\n${intro}`,
+    Markup.inlineKeyboard(rows),
+  );
 }
 
 const collectSlot = new Composer<BotContext>();
@@ -275,7 +302,7 @@ collectSlot.action(/^slot:(any|\d+)$/, async (ctx) => {
   } else {
     const chosen = getAvailableSlots().find((x) => x.routeId === Number(raw));
     if (!chosen) {
-      await ctx.reply('Ce creneau vient d\'etre complete. Choisis-en un autre :');
+      await ctx.reply('Ce créneau vient de se remplir — choisis-en un autre :');
       await promptSlot(ctx);
       return; // on reste sur l'etape
     }
@@ -287,7 +314,7 @@ collectSlot.action(/^slot:(any|\d+)$/, async (ctx) => {
 });
 
 collectSlot.on('message', async (ctx) => {
-  await ctx.reply('Choisis un creneau avec les boutons ci-dessus.');
+  await ctx.reply('Choisis un créneau avec les boutons ci-dessus.');
 });
 
 // ---------------------------------------------------------------------------
@@ -296,13 +323,13 @@ collectSlot.on('message', async (ctx) => {
 
 async function promptNote(ctx: BotContext): Promise<void> {
   const last = state(ctx).lastNote;
-  const rows = [[Markup.button.callback('Aucune precision', 'co:nonote')]];
+  const rows = [[Markup.button.callback('Aucune précision', 'co:nonote')]];
   if (last) rows.unshift([Markup.button.callback(`📝 ${shorten(last, 40)}`, 'co:note')]);
 
   await ctx.reply(
-    `${stepHeader('note', 'Precision pour la livraison')}\n\n` +
-      `${features.deliveryNote.label} Tape ta precision ou choisis ci-dessous.`,
-    Markup.inlineKeyboard(rows),
+    `${stepHeader('note', 'Précision de livraison')}\n\n` +
+      `_${features.deliveryNote.label}_\n\nTape ta précision, ou :`,
+    { parse_mode: 'Markdown', ...Markup.inlineKeyboard(rows) },
   );
 }
 
@@ -329,20 +356,20 @@ collectNote.on(message('text'), async (ctx) => {
 });
 
 collectNote.on('message', async (ctx) => {
-  await ctx.reply('Tape ta precision, ou utilise les boutons.');
+  await ctx.reply('Tape ta précision, ou utilise les boutons.');
 });
 
 // ---------------------------------------------------------------------------
 // Etape 5 : recapitulatif + confirmation
 // ---------------------------------------------------------------------------
 
-/** Ligne "Paiement : ..." du recap, derivee de la config. */
+/** Ligne "Paiement" du recap, derivee de la config. */
 function paymentLine(): string {
-  const remise = features.fulfillment === 'pickup' ? 'au retrait' : 'a la livraison';
+  const quand = features.fulfillment === 'pickup' ? 'au retrait' : 'à la livraison';
   const methods = features.payment.methods
-    .map((m) => (m === 'cash' ? 'especes' : 'carte'))
-    .join(' / ');
-  return `Paiement : ${remise} (${methods} sur place)`;
+    .map((m) => (m === 'cash' ? 'espèces' : 'carte'))
+    .join(' ou ');
+  return `💳 Paiement ${quand} (${methods})`;
 }
 
 /** Ligne "récompense fidélité disponible" du recap, si le client en a une. */
@@ -350,36 +377,39 @@ function loyaltyLine(uid: number): string {
   if (!features.loyalty.enabled) return '';
   const s = loyaltyStatus(uid);
   return s.rewardsAvailable > 0
-    ? `🎁 Recompense fidelite dispo : ${s.rewardLabel} — signale-le en boutique / au livreur\n`
+    ? `🎁 Récompense fidélité à utiliser : ${s.rewardLabel} — signale-le au livreur.\n`
     : '';
 }
 
+// Recap : PAS de parse_mode (l'adresse est du texte libre, un * ou _ casserait
+// l'envoi et bloquerait le checkout). Hierarchie par icones + capitales.
 async function promptConfirm(ctx: BotContext): Promise<void> {
   const uid = userId(ctx);
   const lines = getCart(uid);
   const s = state(ctx);
-  const body = lines.map((l) => `- ${l.label} x ${l.qty}  =  ${l.price * l.qty} EUR`).join('\n');
+  const body = lines.map((l) => `•  ${l.label}  ×${l.qty}  —  ${l.price * l.qty} EUR`).join('\n');
 
   const subtotal = cartTotal(uid);
   const ref = features.referral.enabled ? previewReferral(uid, subtotal) : null;
   const totalBlock =
     ref && ref.discount > 0
-      ? `Sous-total : ${subtotal} EUR\n${ref.lines.join('\n')}\nTotal : ${subtotal - ref.discount} EUR\n`
-      : `Total : ${subtotal} EUR\n`;
+      ? `Sous-total : ${subtotal} EUR\n${ref.lines.join('\n')}\nTOTAL : ${subtotal - ref.discount} EUR\n`
+      : `TOTAL : ${subtotal} EUR\n`;
 
   await ctx.reply(
-    `${stepHeader('confirm', 'Confirmation')}\n\n` +
+    `${stepHeader('confirm', 'Récapitulatif')}\n\n` +
       `${body}\n\n` +
       totalBlock +
-      (s.address ? `Adresse : ${s.address}\n` : '') +
-      (s.phone ? `Telephone : ${s.phone}\n` : '') +
-      (features.deliverySlots.enabled ? `Creneau : ${s.slotLabel ?? 'au plus tot'}\n` : '') +
-      (s.deliveryNote ? `Precision : ${s.deliveryNote}\n` : '') +
+      '\n' +
+      (s.address ? `📍 ${s.address}\n` : '') +
+      (s.phone ? `📞 ${s.phone}\n` : '') +
+      (features.deliverySlots.enabled ? `🕒 ${s.slotLabel ?? 'au plus tôt'}\n` : '') +
+      (s.deliveryNote ? `📝 ${s.deliveryNote}\n` : '') +
       `${paymentLine()}\n` +
       loyaltyLine(uid) +
-      '\nOn valide la commande ?',
+      '\nOn valide ?',
     Markup.inlineKeyboard([
-      [Markup.button.callback('✅ Confirmer', 'order:confirm')],
+      [Markup.button.callback('✅ Confirmer la commande', 'order:confirm')],
       [Markup.button.callback('❌ Annuler', 'order:cancel')],
     ]),
   );
@@ -397,10 +427,10 @@ confirmStep.action('order:confirm', async (ctx) => {
   const { removed, repriced } = reconcileCart(uid);
   if (removed.length > 0) {
     const names = removed.map((l) => `« ${l.label} »`).join(', ');
-    await ctx.reply(`⚠️ ${names} n'est plus disponible et a ete retire de ton panier.`);
+    await ctx.reply(`⚠️ ${names} n'est plus disponible — on l'a retiré de ton panier.`);
   }
   if (repriced.length > 0) {
-    await ctx.reply('ℹ️ Certains prix ont ete mis a jour, verifie le total.');
+    await ctx.reply('ℹ️ Certains prix ont changé — vérifie le total avant de valider.');
   }
 
   const lines = getCart(uid);
@@ -409,8 +439,8 @@ confirmStep.action('order:confirm', async (ctx) => {
   if (lines.length === 0 || missingInfo) {
     await ctx.editMessageText(
       removed.length > 0
-        ? 'Ton panier est vide apres retrait des produits indisponibles. /start pour recommencer.'
-        : 'Commande impossible (panier vide ou infos manquantes). /start pour recommencer.',
+        ? 'Ton panier est vide après le retrait des produits indisponibles. Tape /start pour recommencer.'
+        : 'Commande impossible (panier vide ou infos manquantes). Tape /start pour recommencer.',
     );
     await ctx.scene.leave();
     return;
@@ -448,18 +478,20 @@ confirmStep.action('order:confirm', async (ctx) => {
       await ctx.telegram
         .sendMessage(
           parrainToNotify,
-          `🎁 Ton filleul vient de passer sa premiere commande ! ${features.referral.parrainReward} EUR pour toi sur ta prochaine commande.`,
+          `🎁 Ton filleul vient de passer sa première commande ! ${features.referral.parrainReward} EUR pour toi sur ta prochaine commande.`,
         )
         .catch(() => undefined);
     }
   }
 
   await ctx.editMessageText(
-    `✅ Commande #${orderId} enregistree !\n\n` +
-      `Statut : ${statusLabel(initialStatusId())}\n` +
-      (ref && ref.discount > 0 ? `Reduction parrainage : -${ref.discount} EUR (total ${total} EUR)\n` : '') +
-      (features.deliverySlots.enabled ? `Creneau : ${slotLabel ?? 'au plus tot'}\n` : '') +
-      '\nTu recevras un message des que la commande est confirmee.',
+    `✅ Commande #${orderId} enregistrée !\n\n` +
+      (ref && ref.discount > 0
+        ? `Réduction parrainage : -${ref.discount} EUR — total ${total} EUR\n`
+        : '') +
+      (features.deliverySlots.enabled ? `🕒 ${slotLabel ?? 'au plus tôt'}\n` : '') +
+      `\nStatut : ${statusLabel(initialStatusId())}.\n` +
+      'On te prévient dès qu\'elle est confirmée.',
   );
   await ctx.scene.leave();
 
@@ -469,13 +501,13 @@ confirmStep.action('order:confirm', async (ctx) => {
 });
 
 confirmStep.action('order:cancel', async (ctx) => {
-  await ctx.answerCbQuery('Commande annulee');
-  await ctx.editMessageText('Commande annulee. Ton panier est conserve.');
+  await ctx.answerCbQuery('Commande abandonnée');
+  await ctx.editMessageText('Commande abandonnée. Ton panier est conservé.');
   await ctx.scene.leave();
 });
 
 confirmStep.on('message', async (ctx) => {
-  await ctx.reply('Utilise les boutons "Confirmer" ou "Annuler" ci-dessus.');
+  await ctx.reply('Utilise les boutons « Confirmer » ou « Annuler » ci-dessus.');
 });
 
 // ---------------------------------------------------------------------------
@@ -492,6 +524,6 @@ export const checkoutScene = new Scenes.WizardScene<BotContext>(
 
 // /annuler disponible a n'importe quelle etape de la scene.
 checkoutScene.command('annuler', async (ctx) => {
-  await ctx.reply('Commande abandonnee. Ton panier est conserve.');
+  await ctx.reply('Commande abandonnée. Ton panier est conservé.');
   await ctx.scene.leave();
 });
