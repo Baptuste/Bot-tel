@@ -21,17 +21,15 @@
  */
 import { Composer, Markup, Scenes } from 'telegraf';
 import { message } from 'telegraf/filters';
-import { cartTotal, clearCart, getCart, reconcileCart } from '../cart';
+import { cartTotal, getCart } from '../cart';
 import { notifyNewOrder } from '../orderFlow';
 import { loyaltyStatus } from '../modules/loyalty';
-import {
-  commitCheckout as commitReferral,
-  previewCheckout as previewReferral,
-} from '../modules/referral';
+import { previewCheckout as previewReferral } from '../modules/referral';
+import { createClientOrder } from '../order';
 import { initialStatusId, statusLabel } from '../orderStages';
 import { userId, type BotContext, type CheckoutState } from '../context';
-import { getCustomer, upsertCustomer } from '../customers';
-import { createOrder, getLastOrder, getOrder } from '../orders';
+import { getCustomer } from '../customers';
+import { getLastOrder } from '../orders';
 import { getAvailableSlots, hasUpcomingSlots, type Slot } from '../routes';
 import { features } from '../features';
 import { esc, receiptBlock } from '../views';
@@ -429,21 +427,28 @@ confirmStep.action('order:confirm', async (ctx) => {
   await ctx.answerCbQuery('Commande envoyée !');
 
   const uid = userId(ctx);
-  const { address, phone, routeId, slotLabel, deliveryNote } = state(ctx);
+  const { slotLabel } = state(ctx);
+  const res = createClientOrder({
+    userId: uid,
+    username: ctx.from?.username,
+    address: state(ctx).address,
+    phone: state(ctx).phone,
+    routeId: state(ctx).routeId,
+    deliveryNote: state(ctx).deliveryNote ?? null,
+  });
 
-  // Un produit / une taille a pu devenir indisponible, ou un prix changer.
-  const { removed } = reconcileCart(uid);
-  if (removed.length > 0) {
-    const names = removed.map((l) => `« ${l} »`).join(', ');
+  if (res.removed.length > 0) {
+    const names = res.removed.map((l: string) => `« ${l} »`).join(', ');
     await ctx.reply(`⚠️ ${names} n'est plus disponible — on l'a retiré de ton panier.`);
   }
 
-  const lines = getCart(uid);
-  const missingInfo =
-    (features.requiresAddress && !address) || (features.requiresPhone && !phone);
-  if (lines.length === 0 || missingInfo) {
+  if (!res.ok) {
+    if (res.reason === 'items_changed') {
+      await promptConfirm(ctx); // on reste sur l'etape, le client revalide
+      return;
+    }
     await ctx.editMessageText(
-      removed.length > 0
+      res.reason === 'empty' && res.removed.length > 0
         ? 'Ton panier est vide après le retrait des produits indisponibles. Tape /start pour recommencer.'
         : 'Commande impossible (panier vide ou infos manquantes). Tape /start pour recommencer.',
     );
@@ -451,50 +456,23 @@ confirmStep.action('order:confirm', async (ctx) => {
     return;
   }
 
-  // Un produit a ete retire -> on renvoie vers le recap plutot que de valider a l'aveugle.
-  if (removed.length > 0) {
-    await promptConfirm(ctx);
-    return; // on reste sur l'etape confirmation
-  }
-
-  const subtotal = cartTotal(uid);
-  const ref = features.referral.enabled ? previewReferral(uid, subtotal) : null;
-  const total = subtotal - (ref?.discount ?? 0);
-
-  const orderId = createOrder({
-    userId: uid,
-    username: ctx.from?.username,
-    phone,
-    address,
-    items: lines,
-    total,
-    routeId: routeId ?? null,
-    deliveryNote: deliveryNote ?? null,
-    referralDiscount: ref && ref.discount > 0 ? ref.discount : null,
-  });
-  // Fiche client : creee ou rafraichie (username / tel / adresse / precision).
-  upsertCustomer({ userId: uid, username: ctx.from?.username, phone, address, deliveryNote });
-  clearCart(uid);
-
-  // Applique le parrainage en base + notifie le parrain si son filleul vient de commander.
-  if (ref && ref.discount > 0) {
-    const { parrainToNotify } = commitReferral(ref);
-    if (parrainToNotify !== null) {
-      await ctx.telegram
-        .sendMessage(
-          parrainToNotify,
-          `🎁 Ton filleul vient de passer sa première commande ! ${features.referral.parrainReward} € pour toi sur ta prochaine commande.`,
-        )
-        .catch(() => undefined);
-    }
+  if (res.parrainToNotify) {
+    await ctx.telegram
+      .sendMessage(
+        res.parrainToNotify.userId,
+        `🎁 Ton filleul vient de passer sa première commande ! ${res.parrainToNotify.reward} € pour toi sur ta prochaine commande.`,
+      )
+      .catch(() => undefined);
   }
 
   const detail = [
-    ...(ref && ref.discount > 0 ? [`Payé : ${total} € (−${ref.discount} € parrainage)`] : []),
+    ...(res.referralDiscount > 0
+      ? [`Payé : ${res.total} € (−${res.referralDiscount} € parrainage)`]
+      : []),
     ...(features.deliverySlots.enabled ? [`Créneau : ${slotLabel ?? 'au plus tôt'}`] : []),
   ];
   await ctx.editMessageText(
-    `✅ <b>Commande #${orderId} — enregistrée</b>\n` +
+    `✅ <b>Commande #${res.orderId} — enregistrée</b>\n` +
       `<i>${esc(statusLabel(initialStatusId()))}.</i>\n` +
       (detail.length > 0 ? `${esc(detail.join('\n'))}\n` : '') +
       "\nOn te prévient dès qu'elle est confirmée. Merci ! 🙏",
@@ -502,9 +480,7 @@ confirmStep.action('order:confirm', async (ctx) => {
   );
   await ctx.scene.leave();
 
-  // Le bot previent l'admin (sens client -> admin).
-  const created = getOrder(orderId);
-  if (created) await notifyNewOrder(ctx.telegram, created);
+  await notifyNewOrder(ctx.telegram, res.order); // sens client -> admin
 });
 
 confirmStep.action('order:cancel', async (ctx) => {
