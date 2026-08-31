@@ -6,6 +6,7 @@ Bot Telegram d'une petite boutique de livraison + Mini App admin.
 - [`docs/cadrage.md`](docs/cadrage.md) — cadrage initial (le pourquoi, roadmap V1/V2)
 - [`docs/avancement.md`](docs/avancement.md) — état réel du projet, historique des briques
 - [`docs/coeur-et-modules.md`](docs/coeur-et-modules.md) — direction : cœur générique + modules par client
+- [`docs/feuille-de-route.md`](docs/feuille-de-route.md) — refactoring du cœur + nouveaux modules (fidélité, parrainage, créneaux à capacité…)
 
 Ce README couvre l'architecture et l'installation.
 
@@ -44,13 +45,38 @@ Ce README couvre l'architecture et l'installation.
     + **photo** (redimensionnee cote client, servie en `/uploads/`), activer/desactiver,
     ajouter/modifier/supprimer (le bot voit les changements immediatement : meme
     process -> cache invalide) ;
-  - *Clients* : liste + recherche, fiche (nom, note de livraison, notes admin, historique),
-    **taux de fiabilite calcule** (livrees vs no-show), blocage (liste noire). Annulation
-    d'une commande = raison + case "imputer au client".
+  - *Clients* (si `reliability`) : liste + recherche, fiche (nom, note de livraison, notes
+    admin, historique), **taux de fiabilite calcule** (livrees vs no-show), blocage (liste
+    noire). Annulation d'une commande = raison + case "imputer au client". Cartes
+    **Fidelite** (points + bouton « utiliser une recompense ») et **Parrainage** (code,
+    filleuls, credit) selon les modules actifs.
 
-**État** : V1 complet, V2 ~90 % (voir `docs/avancement.md`). Reste : mode de paiement /
-pourboire au checkout, multi-livreurs ; transverse : hébergement 24/7 (au lieu du
-tunnel), RGPD, gestion de stock.
+## Modules activables par client
+
+Le comportement du bot est piloté par un seul objet, `src/features.ts` (registre
+de clients, choisi par `CLIENT_ID`). Un module absent ne coûte rien à ce client
+(ni table, ni requête, ni écran). Voir [`docs/coeur-et-modules.md`](docs/coeur-et-modules.md)
+et [`docs/feuille-de-route.md`](docs/feuille-de-route.md).
+
+| Module | Flag(s) | Rôle |
+|---|---|---|
+| Retrait / livraison | `fulfillment`, `requiresAddress`, `requiresPhone` | Étapes du checkout, schéma `orders` nullable |
+| Tournées & créneaux | `deliverySlots.enabled` | Tables `routes` / `route_templates`, onglet Tournées, étape créneau |
+| Multi-livreurs | `deliverySlots.drivers` | Table `drivers`, affectation par tournée, notif « ton livreur » |
+| Créneaux à capacité | `deliverySlots.capacityLimit` | Plafond par défaut ; créneau plein retiré des choix, places restantes affichées |
+| Précision de livraison | `deliveryNote.enabled` / `.label` | Étape « étage, code… » optionnelle |
+| Variantes | `variants.enabled` / `.label` | Masque les variantes côté client ; libellé « Taille / Couleur… » |
+| Messages pré-écrits | `messaging.templatesEnabled` | Table `message_templates`, `/api/templates`, chips admin |
+| Fiabilité / no-show | `reliability.enabled` | `src/modules/reliability.ts` ; onglet Clients, ligne d'alerte admin |
+| Fidélité | `loyalty.*` | Table `loyalty` ; points à la commande servie, `/fidelite`, récompense au palier |
+| Parrainage | `referral.*` | Table `referrals` ; `/parrainage`, réduction filleul + crédit parrain |
+| Machine à états | `orderFlow` | Pipeline de statuts défini en données (`src/orderStages.ts`) ; ex. retrait : `pending → confirmed → ready → collected` |
+
+**État** : V1 complet, V2 ~95 %. Cœur dégraissé (fiabilité / messages / machine à
+états sortis en modules). Modules Partie 3 faits : créneaux à capacité, fidélité,
+parrainage. Reste : mode de paiement / pourboire au checkout ; notifications
+marketing (bloqué : règles Telegram) ; transverse : hébergement 24/7, RGPD, stock.
+Voir `docs/avancement.md` et `docs/feuille-de-route.md`.
 
 ## Lancer la Mini App admin (dev)
 
@@ -81,19 +107,23 @@ se greffe sans reecrire l'existant.
 | `data/bot.db` | Base SQLite locale (ignoree par git). Cree automatiquement au 1er lancement. |
 | `src/catalog.ts` | Catalogue en base : `getMenu()` (menu filtre pour le bot) + CRUD (Mini App). |
 | `src/uploads.ts` | Images produits sur disque (`data/uploads/`), decode base64 / suppression. |
-| `src/db.ts` | Connexion SQLite (`DB_PATH`) + tables (`orders`, `categories`, `products`, `product_variants`, `sessions`, `customers`, `message_templates` ; `routes` / `route_templates` / `drivers` seulement si `features.deliverySlots.enabled`). |
-| `src/orders.ts` | Requetes sur `orders`. Une commande = donnee **definitive**. |
+| `src/db.ts` | Connexion SQLite (`DB_PATH`) + tables du cœur (`orders`, `categories`, `products`, `product_variants`, `sessions`, `customers`) ; tables de module créées **seulement si le flag est actif** : `routes` / `route_templates` / `drivers` (`deliverySlots`), `message_templates` (`messaging`), `loyalty`, `referrals`. |
+| `src/orders.ts` | Requetes sur `orders`. Une commande = donnee **definitive**. Statut = id d'étape (`string`). |
+| `src/orderStages.ts` | Machine à états : helpers dérivés de `features.orderFlow` (rôles `placed / accepted / fulfilling / fulfilled / cancelled`), `validateOrderFlow()`. |
 | `src/drivers.ts` | Livreurs (sous-module `deliverySlots.drivers`) : CRUD, affectation a une tournee. |
-| `src/customers.ts` | Fiche client consolidee + taux de fiabilite (calcule depuis `orders`). |
-| `src/orderFlow.ts` | Cycle de vie d'une commande : `changeStatus()`, transitions, notifications client (hors UI). |
+| `src/customers.ts` | Fiche client **minimale** (nom, tél, adresse, notes, blocage). **Cœur.** |
+| `src/modules/reliability.ts` | Taux de fiabilité (livrées / no-show), calculé depuis `orders`. Module `reliability`. |
+| `src/modules/loyalty.ts` | Points de fidélité (table `loyalty`), crédités au rôle `fulfilled`. Module `loyalty`. |
+| `src/modules/referral.ts` | Parrainage (table `referrals`) : code = `user_id` base 36, réduction filleul + crédit parrain. Module `referral`. |
+| `src/orderFlow.ts` | Cycle de vie d'une commande : `changeStatus()`, transitions **générées** depuis `features.orderFlow`, notifications client (hors UI). |
 | `src/routes.ts` | Tournees + modeles de creneaux + suivi en direct (`markDelivered`, `notifyRouteProgress`). |
 | `src/scheduler.ts` | Planificateur : tournees + purge sessions (horaire) + alerte commandes en attente (5 min). |
 | `src/dashboard.ts` | Agregats du tableau de bord admin + detection des commandes en attente trop longtemps. |
-| `src/messageTemplates.ts` | Modeles de messages pre-ecrits (CRUD, seed de 4 par defaut). |
-| `src/sessionStore.ts` | Store de sessions telegraf sur SQLite (persistance + TTL + purge). |
-| `src/api/` | Routes Express de la Mini App (`orders`, `catalog`, `routes`) + `auth` (initData). |
-| `src/cart.ts` | Panier **en memoire** (perdu au redemarrage). Devient une ligne `orders` a la validation. |
-| `src/views.ts` | Transforme (menu, panier) en `{ text, keyboard }`. N'envoie rien. |
+| `src/messageTemplates.ts` | Modeles de messages pre-ecrits (module `messaging`, seed de 4 par defaut). |
+| `src/sessionStore.ts` | Store de sessions telegraf sur SQLite (persistance + TTL + purge). **Cœur.** |
+| `src/api/` | Routes Express de la Mini App (`orders`, `catalog`, `customers`, `dashboard`, `features`) + montées conditionnellement (`routes`, `drivers`, `templates`) + `auth` (initData). |
+| `src/cart.ts` | Panier **en memoire** (perdu au redemarrage). Devient une ligne `orders` a la validation. **Cœur.** |
+| `src/views.ts` | Transforme (menu, panier) en `{ text, keyboard }`. N'envoie rien. Libellé variantes depuis `features.ts`. |
 | `src/callbacks.ts` | `callback_data` structurees (`nav:cat:pizzas`...) + parsing. Un seul listener generique. |
 | `src/scenes/quantity.ts` | Scene simple (BaseScene) : attend une quantite. |
 | `src/scenes/checkout.ts` | WizardScene : adresse -> tel -> creneau -> precision -> confirmation (etapes sautees selon `features.ts`, + reconcile panier). |
@@ -109,17 +139,21 @@ le menu **☰** a cote de la zone de saisie. Les admins voient en plus `/admin`.
 `ADMIN_IDS` dans `.env` = les `user_id` Telegram autorises (separes par des virgules).
 Pour connaitre son id : commande `/id` du bot, ou [@userinfobot](https://t.me/userinfobot).
 
-- `/admin` : compte les commandes par statut + liste les commandes en cours avec des boutons.
-- Boutons : `pending -> confirmed -> delivering -> delivered`, plus annulation.
-- `changeStatus()` (`src/admin.ts`) est le **point de passage unique** : il valide la
-  transition, met a jour la base, envoie la notification au client. La future Mini App
-  admin appellera la meme fonction.
+- `/admin` : recap par etape du pipeline + liste des commandes en cours avec des boutons.
+- Les boutons de transition viennent de `features.orderFlow` (par defaut, livraison :
+  `pending -> confirmed -> delivering -> delivered`, plus annulation).
+- `changeStatus()` (`src/orderFlow.ts`) est le **point de passage unique** : il valide la
+  transition (linéaire + annulation), met a jour la base, notifie le client, crédite les
+  points de fidélité si le module est actif. Le bot ET la Mini App passent par là.
 
-### Schema base de donnees (V1)
+### Schema base de donnees
 
 `orders` : `id`, `user_id`, `username`, `phone` (nullable), `items` (JSON),
-`address` (nullable — retrait boutique), `total`, `status` (`pending` par defaut),
-`route_id`, `created_at` (+ colonnes ajoutees par les briques suivantes).
+`address` (nullable — retrait), `total`, `status` (id d'étape de `features.orderFlow`),
+`route_id`, `route_position`, `delivery_note`, `referral_discount`, `no_show`,
+`cancellation_reason`, `created_at` / `updated_at` / `delivered_at`, `alerted`.
+Tables de module : `routes`, `route_templates`, `drivers`, `message_templates`,
+`loyalty`, `referrals` — créées seulement pour les clients qui activent le module.
 
 ## Prerequis
 
@@ -146,12 +180,22 @@ Copy-Item .env.example .env
 ## Lancer
 
 ```powershell
-npm run dev      # developpement (reload auto)
-npm run build    # compile vers dist/
-npm start        # execute la version compilee
-npm run typecheck
-npm run smoke    # test de fumee de l'API (bot lance requis) - voir scripts/README.md
+npm run dev            # developpement (reload auto)
+npm run build          # compile vers dist/
+npm start              # execute la version compilee
+npm run typecheck      # tsc back + front
+
+# Tests (in-process sauf smoke ; bases isolees ; voir scripts/README.md)
+npm run smoke          # API de bout en bout (bot lance requis)
+npm run test:journee   # journee pizzeria simulee (20 clients, 3 tournees)
+npm run test:boutique  # client fictif "retrait boutique" (machine a etats, modules off)
+npm run test:creneaux  # capacite des creneaux
+npm run test:loyalty   # programme de fidelite
+npm run test:referral  # parrainage
 ```
+
+Un autre client se lance avec `CLIENT_ID=boutique-demo npm run dev` (base
+distincte via `DB_PATH`).
 
 ## Tester (checklist manuelle)
 

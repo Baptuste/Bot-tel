@@ -21,3 +21,6 @@ data/uploads/
 # Logs
 *.log
 npm-debug.log*
+
+# Sauvegarde d'un .git corrompu (2026-08-31) - a supprimer via l'Explorateur Windows
+.git-broken/
