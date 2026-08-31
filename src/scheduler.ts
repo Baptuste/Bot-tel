@@ -22,7 +22,7 @@ async function checkOverduePending(telegram: Telegram): Promise<void> {
   if (ids.length === 0) return;
 
   const list = ids.map((id) => `#${id}`).join(', ');
-  const text = `⏰ ${ids.length} commande(s) en attente depuis +${PENDING_ALERT_MINUTES} min : ${list}\nA confirmer ou refuser.`;
+  const text = `⏰ ${ids.length} commande(s) en attente depuis plus de ${PENDING_ALERT_MINUTES} min : ${list}\nÀ confirmer ou refuser.`;
   for (const adminId of config.adminIds) {
     await safeSend(telegram, adminId, text);
   }

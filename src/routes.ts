@@ -339,10 +339,10 @@ export async function notifyRouteProgress(telegram: Telegram, routeId: number): 
     const o = remaining[i]!;
     const msg =
       i === 0
-        ? `🛵 Ta commande #${o.id} : tu es la PROCHAINE livraison ! Tiens-toi pret.`
+        ? `🛵 Commande #${o.id} : tu es le prochain arrêt ! Prépare-toi à la réceptionner.`
         : i === 1
-          ? `🛵 Ta commande #${o.id} : plus qu'un arret avant toi.`
-          : `🛵 Ta commande #${o.id} : encore 2 arrets avant toi.`;
+          ? `🛵 Commande #${o.id} : plus qu'un arrêt avant toi.`
+          : `🛵 Commande #${o.id} : encore 2 arrêts avant toi.`;
     await safeSend(telegram, o.user_id, msg);
   }
 }

@@ -149,8 +149,8 @@ try {
   // --- 6b. Transitions derivees de features.orderFlow ---
   const seq = (id: string) => nextStatuses(id).map((s) => `${s.to}:${s.label}`).join(' | ');
   check('nextStatuses(pending)', seq('pending') === 'confirmed:✅ Confirmer | cancelled:❌ Refuser');
-  check('nextStatuses(confirmed)', seq('confirmed') === 'ready:📦 Prete | cancelled:❌ Annuler');
-  check('nextStatuses(ready)', seq('ready') === 'collected:✅ Retiree | cancelled:❌ Souci');
+  check('nextStatuses(confirmed)', seq('confirmed') === 'ready:📦 Prête | cancelled:❌ Annuler');
+  check('nextStatuses(ready)', seq('ready') === 'collected:✅ Retirée | cancelled:❌ Souci');
   check('nextStatuses(collected) = [] (terminal)', nextStatuses('collected').length === 0);
   let badThrew = false;
   try {
@@ -170,10 +170,10 @@ try {
   check('  horodatage de completion pose (role fulfilled)', getOrder(life)!.delivered_at !== null);
   const msgs = sent.filter((m) => m.chatId === USER && m.text.includes(`#${life}`)).map((m) => m.text);
   check(
-    '  le client a recu "confirmee", "prete", "retiree"',
-    msgs.some((t) => t.includes('est confirmee')) &&
-      msgs.some((t) => t.includes('est prete')) &&
-      msgs.some((t) => t.includes('a bien ete retiree')),
+    '  le client a recu "confirmée", "prête", "retirée"',
+    msgs.some((t) => t.includes('est confirmée')) &&
+      msgs.some((t) => t.includes('est prête')) &&
+      msgs.some((t) => t.includes('a bien été retirée')),
   );
   check(
     '  "collected" compte comme une commande servie (dashboard + fiabilite)',

@@ -135,9 +135,11 @@ if (features.loyalty.enabled) {
     const s = loyaltyStatus(userId(ctx));
     const line =
       s.rewardsAvailable > 0
-        ? `🎁 Tu as ${s.rewardsAvailable} recompense(s) : ${s.rewardLabel}. Signale-le en commandant !`
+        ? `🎁 Tu as ${s.rewardsAvailable} récompense(s) : ${s.rewardLabel}. Signale-le en commandant !`
         : `Plus que ${s.toNextReward} point(s) pour : ${s.rewardLabel}.`;
-    await ctx.reply(`⭐ Fidelite\n\nTu as ${s.points} point(s).\n${line}`);
+    await ctx.reply(`⭐ *Fidélité*\n\nTu as ${s.points} point(s).\n${line}`, {
+      parse_mode: 'Markdown',
+    });
   });
 }
 
@@ -146,8 +148,8 @@ if (features.referral.enabled) {
     code_invalide: "Ce code n'existe pas.",
     auto_parrainage: 'Tu ne peux pas utiliser ton propre code.',
     parrain_inconnu: "Ce code n'existe pas.",
-    deja_parraine: 'Tu as deja un code de parrainage enregistre.',
-    trop_tard: 'Le parrainage est reserve a ta toute premiere commande.',
+    deja_parraine: 'Tu as déjà un code de parrainage enregistré.',
+    trop_tard: 'Le parrainage est réservé à ta toute première commande.',
   };
   bot.command('parrainage', async (ctx) => {
     const uid = userId(ctx);
@@ -156,20 +158,22 @@ if (features.referral.enabled) {
       const res = registerFilleul(uid, arg);
       await ctx.reply(
         res.ok
-          ? `✅ Code accepte ! ${referralInfo(uid).filleulDiscount} EUR de reduction sur ta premiere commande.`
-          : `❌ ${REGISTER_ERR[res.reason] ?? 'Code refuse.'}`,
+          ? `✅ Code accepté ! ${referralInfo(uid).filleulDiscount} EUR de réduction sur ta première commande.`
+          : `❌ ${REGISTER_ERR[res.reason] ?? 'Code refusé.'}`,
       );
       return;
     }
     const info = referralInfo(uid);
     const parts = [
-      `👥 Parrainage\n\nTon code : *${info.code}*`,
-      `Partage-le : a sa 1re commande avec ton code, ton filleul a ${info.filleulDiscount} EUR ` +
-        `de reduction et toi ${info.parrainReward} EUR sur ta commande suivante.`,
+      `👥 *Parrainage*\n\nTon code : *${info.code}*`,
+      `Partage-le : à sa 1re commande avec ton code, ton filleul a ${info.filleulDiscount} EUR ` +
+        `de réduction, et toi ${info.parrainReward} EUR sur ta commande suivante.`,
     ];
     if (info.filleulsCompleted > 0) parts.push(`Filleuls actifs : ${info.filleulsCompleted}.`);
     if (info.creditAvailable > 0) {
-      parts.push(`🎁 Tu as ${info.creditAvailable} EUR de credit parrain, applique a ta prochaine commande.`);
+      parts.push(
+        `🎁 Tu as ${info.creditAvailable} EUR de crédit parrain, appliqué à ta prochaine commande.`,
+      );
     }
     await ctx.reply(parts.join('\n\n'), { parse_mode: 'Markdown' });
   });

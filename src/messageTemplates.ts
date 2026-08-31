@@ -39,15 +39,18 @@ function q(): ReturnType<typeof buildStatements> {
 
 const DEFAULTS: Array<Omit<MessageTemplate, 'id' | 'position'>> = [
   { label: 'On arrive', content: '🛵 On arrive dans une dizaine de minutes !' },
-  { label: 'Leger retard', content: '⏳ Leger retard sur la livraison, desole. On arrive des que possible.' },
+  {
+    label: 'Léger retard',
+    content: '⏳ Léger retard sur la livraison, désolé. On arrive dès que possible.',
+  },
   {
     label: 'Rupture / remplacement',
     content:
-      "Un produit de ta commande est en rupture. On peut le remplacer par un equivalent, ca te va ?",
+      'Un produit de ta commande est en rupture. On peut le remplacer par un équivalent, ça te va ?',
   },
   {
-    label: 'Adresse a preciser',
-    content: "Le livreur ne trouve pas l'adresse. Peux-tu preciser (etage, code d'acces, batiment) ?",
+    label: 'Adresse à préciser',
+    content: "Le livreur ne trouve pas l'adresse. Peux-tu préciser (étage, code d'accès, bâtiment) ?",
   },
 ];
 

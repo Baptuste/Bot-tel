@@ -81,7 +81,7 @@ try {
   check('10 points -> 1 recompense disponible', loyalty.loyaltyStatus(USER).rewardsAvailable === 1);
   check(
     '  le client est notifie du palier',
-    sent.some((m) => m.chatId === USER && m.text.includes('debloque') && m.text.includes('viennoiserie')),
+    sent.some((m) => m.chatId === USER && m.text.includes('débloqué') && m.text.includes('viennoiserie')),
   );
 
   // L'admin applique la recompense.

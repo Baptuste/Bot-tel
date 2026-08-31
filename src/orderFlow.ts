@@ -90,32 +90,32 @@ export function nextStatuses(status: OrderStatus): StatusOption[] {
 /** Ligne d'alerte sur le client (bloque / no-show), vide s'il est fiable ou nouveau. */
 function customerFlag(userId: number): string {
   const customer = getCustomer(userId);
-  if (customer?.blocked) return '🚫 CLIENT BLOQUE (liste noire)\n';
+  if (customer?.blocked) return '🚫 CLIENT BLOQUÉ (liste noire)\n';
   if (!features.reliability.enabled) return '';
   const r = getReliability(userId);
   if (r.noShow > 0) {
     const pct = r.rate === null ? '?' : Math.round(r.rate * 100);
-    return `⚠️ Fiabilite : ${r.delivered} livrees / ${r.noShow} no-show (${pct}%)\n`;
+    return `⚠️ Fiabilité : ${r.delivered} livrées / ${r.noShow} no-show (${pct} %)\n`;
   }
   return '';
 }
 
 /** Rendu texte d'une commande (notifications admin). */
 export function renderOrderText(o: Order): string {
-  const items = o.items.map((l) => `  - ${l.label} x${l.qty}  (${l.price * l.qty} EUR)`).join('\n');
+  const items = o.items.map((l) => `  •  ${l.label} ×${l.qty}   ${l.price * l.qty} EUR`).join('\n');
   const who = o.username ? `@${o.username}` : `id ${o.user_id}`;
   return (
-    `Commande #${o.id} - ${statusLabel(o.status)}\n` +
+    `Commande #${o.id} — ${statusLabel(o.status)}\n` +
     customerFlag(o.user_id) +
-    `Client : ${who}\n` +
-    (o.phone ? `Tel : ${o.phone}\n` : '') +
-    (o.address ? `Adresse : ${o.address}\n` : 'Retrait en boutique\n') +
-    (o.delivery_note ? `Precision : ${o.delivery_note}\n` : '') +
-    `${items}\n` +
+    `👤 ${who}\n` +
+    (o.phone ? `📞 ${o.phone}\n` : '') +
+    (o.address ? `📍 ${o.address}\n` : '🏬 Retrait en boutique\n') +
+    (o.delivery_note ? `📝 ${o.delivery_note}\n` : '') +
+    `\n${items}\n` +
     `Total : ${o.total} EUR\n` +
     loyaltyFlag(o.user_id) +
-    (o.cancellation_reason ? `Annulation : ${o.cancellation_reason}\n` : '') +
-    `Passee le ${o.created_at} UTC`
+    (o.cancellation_reason ? `⚠️ Annulation : ${o.cancellation_reason}\n` : '') +
+    `\nPassée le ${o.created_at} UTC`
   );
 }
 
@@ -124,7 +124,7 @@ function loyaltyFlag(userId: number): string {
   if (!features.loyalty.enabled) return '';
   const s = loyaltyStatus(userId);
   return s.rewardsAvailable > 0
-    ? `🎁 Recompense fidelite a appliquer : ${s.rewardLabel} (${s.points} pts)\n`
+    ? `🎁 Récompense fidélité à appliquer : ${s.rewardLabel} (${s.points} pts)\n`
     : '';
 }
 
@@ -169,8 +169,8 @@ async function awardLoyalty(telegram: Telegram, order: Order): Promise<void> {
     await safeSend(
       telegram,
       order.user_id,
-      `🎉 ${status.points} points de fidelite ! Tu as debloque : ${status.rewardLabel}.\n` +
-        'Signale-le a ta prochaine commande.',
+      `🎉 ${status.points} points de fidélité ! Tu as débloqué : ${status.rewardLabel}.\n` +
+        'Signale-le à ta prochaine commande.',
     );
   }
 }
@@ -178,7 +178,7 @@ async function awardLoyalty(telegram: Telegram, order: Order): Promise<void> {
 /** Previent les admins qu'une nouvelle commande vient d'arriver. */
 export async function notifyNewOrder(telegram: Telegram, order: Order): Promise<void> {
   if (config.adminIds.length === 0) return;
-  const text = `🔔 Nouvelle commande #${order.id}\n\n${renderOrderText(order)}`;
+  const text = `🔔 Nouvelle commande #${order.id}\n\n${renderOrderText(order)}`; // "Nouvelle commande #" : verifie par les tests
   for (const adminId of config.adminIds) {
     await safeSend(telegram, adminId, text, orderKeyboard(order));
   }
