@@ -181,34 +181,30 @@ restants) reprend une fois ce chantier jugé satisfaisant.*
 
 ---
 
-## C. Ordre de bataille proposé (petits lots testables)
+## C. Ordre de bataille (petits lots testables) — **terminé**
 
-> Règle : après chaque lot, `npm run typecheck` + les 6 suites de tests restent vertes.
+> Règle tenue à chaque lot : `npm run typecheck` 0 + smoke 66 + boutique 29 +
+> journee 30 + creneaux 7 + loyalty 13 + referral 16, tous verts. Bot redémarré
+> et boot vérifié après chaque lot bot.
 
-**Lot 1 — Design system Mini App (fondations, invisible seul).**
-Tokens CSS nommés (couleur/typo/espacement/rayon), palette clair+sombre propre,
-échelle typographique, composant « bandeau » (`.notice` info/success/warning/danger)
-en remplacement du `.error` détourné. Aucun changement de structure JSX.
+Direction visuelle (skill `frontend-design`) : **le bon de commande**. Métaphore
+d'un outil de comptoir — tickets de caisse, tampons encreurs, bordereaux.
+Signature : n° en chiffres mono, statut « tamponné » (encadré, incliné -1,5°),
+bord haut + total sous ligne pointillée, tableau de bord en bandeau de caisse.
+Typo : pile système pour la prose, **IBM Plex Mono** pour toute la donnée.
 
-**Lot 2 — Premier écran : onglet Commandes.**
-Hiérarchie dashboard ↔ liste, refonte carte commande + badges de statut, boutons
-d'action. C'est le premier écran vu → priorité méthode point 2.
+| Lot | Contenu | Commit |
+|---|---|---|
+| **1** | Design system Mini App : tokens CSS (couleur/typo/espace/rayon) sur `--tg-theme-*`, clair+sombre, `.notice` (remplace `.error` détourné), IBM Plex Mono. Zéro JSX. | `0db98a1` |
+| **2** | Onglet Commandes : bandeau « Aujourd'hui », carte docket 4 niveaux, points de conduite sur les articles, `.flag` pour les alertes client. | `a15ccc2` |
+| **3** | Accueil bot : `/start` = greeting court + menu, `features.displayName` en tête, `/help` adaptatif (modules), ajout panier en 1 message, accents `views.ts`. | `491f8cf` |
+| **4** | Checkout : fast-path « ⚡ Mêmes adresse et numéro » (address+phone en 1 tap, saute l'étape téléphone), récap à icônes (📍📞🕒📝💳) sans `parse_mode`, accents. | `421bd17` |
+| **5** | Notifications : `features.ts` flows (label/arrival/cancel), `renderOrderText` à icônes, `routes.ts` (progression sans genrer le client), `scheduler.ts`, `messageTemplates.ts`, `/fidelite` + `/parrainage`. Assertions de test synchronisées. | `6583ad0` |
+| **6** | Écrans Mini App restants : accents sur toute la copie admin, en-têtes `<h2>` (intercalaires mono), `.product` flex-wrap (fix wrapping « dès 9 € »), `.badge.cancelled` → `.flag`, séparateurs `·`. | `5e73196` |
+| **7** | Feedback : `answerCbQuery` utiles (« Créneau choisi », « Commande envoyée ! »). Passage global **EUR → €** (bot + Mini App). | `76257a7` |
 
-**Lot 3 — `/start` + accueil bot.**
-Fusionner les 2 messages d'ouverture en 1, ajouter `features.displayName`, passer les
-messages clés en accents + gras sur l'info importante. Chantier « accents » traité ici
-en balayage global de `views.ts`.
+**Reste possible plus tard** : petites animations de progression (Telegram natif) ;
+choix explicite du mode de paiement + pourboire au checkout (reliquat V2).
 
-**Lot 4 — Checkout bot.**
-Pré-remplissage mis en avant (bouton par défaut + libellé clair), récap confirmation
-remis en forme (gras/accents), fusion `✅ ajouté` + panier.
-
-**Lot 5 — Notifications (`orderFlow.ts`, `routes.ts`, `features.ts` flows).**
-Messages client de transition + suivi tournée : accents, gras, retrait du `#id` brut
-au profit d'une formulation client. `renderOrderText` admin remis en forme.
-
-**Lot 6 — Écrans Mini App restants.**
-Catalogue, Tournées (hiérarchie des 4 blocs), Clients, CustomerDetail, OrderEdit.
-
-**Lot 7 — Finitions feedback.**
-Contenu des `answerCbQuery`, confirmations, éventuelles animations de progression.
+Une fois ce chantier jugé satisfaisant : reprise de `feuille-de-route.md`
+(Partie 4 configurateur, module marketing).
