@@ -92,24 +92,34 @@ export function Orders() {
       {loading && <p className="muted">Chargement...</p>}
       {!loading && !error && visible.length === 0 && <p className="muted">Aucune commande.</p>}
 
-      {visible.map((o) => (
-        <div key={o.id} className="card clickable" onClick={() => setSelectedId(o.id)}>
-          <div className="row">
-            <strong>#{o.id}</strong>
-            <span className="badge" data-role={flow.role(o.status)}>{flow.label(o.status)}</span>
-          </div>
-          <div className="muted">
-            {o.customer.name || (o.username ? `@${o.username}` : `id ${o.user_id}`)} - {o.total} EUR -{' '}
-            {o.items.length} article(s)
-            {reliabilityBadge(o.customer.reliability, o.customer.blocked) && (
-              <span className="badge cancelled" style={{ marginLeft: 6 }}>
-                {reliabilityBadge(o.customer.reliability, o.customer.blocked)}
+      {visible.map((o) => {
+        const flag = reliabilityBadge(o.customer.reliability, o.customer.blocked);
+        return (
+          <div key={o.id} className="card clickable" onClick={() => setSelectedId(o.id)}>
+            <div className="row">
+              <strong>#{o.id}</strong>
+              <span className="badge" data-role={flow.role(o.status)}>
+                {flow.label(o.status)}
               </span>
-            )}
+            </div>
+            <div className="tk-who">
+              <span>
+                {o.customer.name || (o.username ? `@${o.username}` : `client ${o.user_id}`)}
+              </span>
+              {flag && <span className={`flag${o.customer.blocked ? ' blocked' : ''}`}>{flag}</span>}
+            </div>
+            <div className="tk-line">
+              <span>
+                {o.items.length} article{o.items.length > 1 ? 's' : ''}
+              </span>
+              <span className="tk-total">{o.total} EUR</span>
+            </div>
+            <div className="tk-sub muted small">
+              🕒 {slotText(o.route)} · {o.address ?? 'retrait boutique'}
+            </div>
           </div>
-          <div className="muted">🕒 {slotText(o.route)} - {o.address ?? 'retrait boutique'}</div>
-        </div>
-      ))}
+        );
+      })}
 
       {!loading && (
         <button className="btn secondary" onClick={() => void load()} style={{ marginTop: 8 }}>

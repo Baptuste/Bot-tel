@@ -278,7 +278,56 @@ h2 {
   color: var(--st-warn);
 }
 
-/* --- Lignes d'articles : colonnes mono alignées --- */
+/* --- Étiquette d'alerte client (no-show / bloqué) : un tag, pas un tampon --- */
+.flag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  padding: 1px 5px;
+  color: var(--st-warn);
+  border: 1px solid color-mix(in srgb, var(--st-warn) 45%, transparent);
+  border-radius: 3px;
+}
+
+.flag.blocked {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+/* --- Le ticket (docket) : 4 niveaux — n° · client · compteur/total · quand/où --- */
+.tk-who {
+  margin-top: var(--s-1);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-2);
+  font-size: var(--fs-sm);
+}
+
+.tk-line {
+  margin-top: var(--s-1);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--hint);
+}
+
+.tk-line .tk-total {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tk-sub {
+  margin-top: var(--s-1);
+}
+
+/* --- Lignes d'articles : ticket de caisse (nom · points de conduite · total) --- */
 .items {
   margin: var(--s-2) 0;
   padding: 0;
@@ -286,8 +335,9 @@ h2 {
 }
 
 .items li {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
   gap: var(--s-2);
   padding: 3px 0;
   font-family: var(--font-mono);
@@ -298,6 +348,22 @@ h2 {
 
 .items li:first-child {
   border-top: none;
+}
+
+/* Colonne nom : le texte, puis des points qui remplissent l'espace restant. */
+.it-name {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.it-name::after {
+  content: ' ....................................................................';
+  letter-spacing: 2px;
+  color: var(--line-strong);
+}
+
+.it-qty {
+  color: var(--hint);
 }
 
 /* --- Total : sous une ligne « à découper » --- */
@@ -501,6 +567,15 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
+}
+
+.dash-head {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hint);
 }
 
 .dash-today {

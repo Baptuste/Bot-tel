@@ -109,7 +109,7 @@ export function OrderDetail({ order, onBack, onChanged }: Props) {
       )}
 
       {(badge || order.customer.blocked) && (
-        <div className="error" style={{ background: order.customer.blocked ? '#b23b3b' : '#e2820a' }}>
+        <div className={`notice ${order.customer.blocked ? 'notice--danger' : 'notice--warning'}`}>
           {order.customer.blocked
             ? '🚫 Client sur liste noire'
             : rel
@@ -119,7 +119,7 @@ export function OrderDetail({ order, onBack, onChanged }: Props) {
       )}
 
       {(order.customer.loyalty?.rewardsAvailable ?? 0) > 0 && (
-        <div className="error" style={{ background: '#2c9e4b' }}>
+        <div className="notice notice--success">
           🎁 Récompense fidélité disponible pour ce client
         </div>
       )}
@@ -128,9 +128,8 @@ export function OrderDetail({ order, onBack, onChanged }: Props) {
         <ul className="items">
           {order.items.map((l) => (
             <li key={`${l.catId}:${l.prodId}:${l.variantId ?? ''}`}>
-              <span>
-                {l.label} &times; {l.qty}
-              </span>
+              <span className="it-name">{l.label}</span>
+              <span className="it-qty">{l.qty} &times;</span>
               <span>{l.price * l.qty} EUR</span>
             </li>
           ))}

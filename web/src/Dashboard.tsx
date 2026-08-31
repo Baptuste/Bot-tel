@@ -32,6 +32,7 @@ export function Dashboard({ onShowPending, refreshKey }: Props) {
 
   return (
     <div className="dash">
+      <div className="dash-head">Aujourd'hui</div>
       <div className="dash-today">
         <div>
           <strong>{data.today.orders}</strong>
