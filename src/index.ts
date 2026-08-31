@@ -31,8 +31,10 @@ import {
   cartView,
   categoriesView,
   categoryView,
+  esc,
   isPhotoView,
   productView,
+  section,
   type AnyView,
 } from './views';
 
@@ -67,7 +69,7 @@ async function render(ctx: BotContext, view: AnyView): Promise<void> {
 
   if (fromCallback && !photo && !fromPhotoMessage(ctx)) {
     try {
-      await ctx.editMessageText(view.text, { parse_mode: 'Markdown', ...view.keyboard });
+      await ctx.editMessageText(view.text, { parse_mode: 'HTML', ...view.keyboard });
       return;
     } catch (err) {
       const description = (err as { description?: string }).description ?? '';
@@ -80,10 +82,10 @@ async function render(ctx: BotContext, view: AnyView): Promise<void> {
   if (photo) {
     await ctx.replyWithPhoto(
       { source: view.photo },
-      { caption: view.caption, parse_mode: 'Markdown', ...view.keyboard },
+      { caption: view.caption, parse_mode: 'HTML', ...view.keyboard },
     );
   } else {
-    await ctx.reply(view.text, { parse_mode: 'Markdown', ...view.keyboard });
+    await ctx.reply(view.text, { parse_mode: 'HTML', ...view.keyboard });
   }
 }
 
@@ -100,13 +102,13 @@ bot.command('panier', async (ctx) => {
 
 bot.help(async (ctx) => {
   const lines = [
-    '/start — afficher le menu',
-    '/panier — voir mon panier',
-    '/mes_commandes — mon historique de commandes',
+    '<code>/start</code> — afficher la carte',
+    '<code>/panier</code> — voir mon panier',
+    '<code>/mes_commandes</code> — mon historique de commandes',
   ];
-  if (features.loyalty.enabled) lines.push('/fidelite — mes points de fidélité');
-  if (features.referral.enabled) lines.push('/parrainage — mon code de parrainage');
-  await ctx.reply(lines.join('\n'));
+  if (features.loyalty.enabled) lines.push('<code>/fidelite</code> — mes points de fidélité');
+  if (features.referral.enabled) lines.push('<code>/parrainage</code> — mon code de parrainage');
+  await ctx.reply(`${section('Aide')}\n\n${lines.join('\n')}`, { parse_mode: 'HTML' });
 });
 
 // Helper de configuration : donne son propre user_id (a mettre dans ADMIN_IDS).
@@ -123,23 +125,25 @@ bot.command('mes_commandes', async (ctx) => {
   const text = orders
     .slice(0, 10)
     .map((o) => {
-      const items = o.items.map((l) => `${l.label} ×${l.qty}`).join(', ');
-      return `*#${o.id}* · _${statusLabel(o.status)}_\n${items}\n${o.total} € — ${o.created_at}`;
+      const items = esc(o.items.map((l) => `${l.label} ×${l.qty}`).join(', '));
+      return `<b>#${o.id}</b> · <i>${esc(statusLabel(o.status))}</i>\n${items}\n${o.total} € — ${o.created_at}`;
     })
     .join('\n\n');
-  await ctx.reply(`*Tes dernières commandes*\n\n${text}`, { parse_mode: 'Markdown' });
+  await ctx.reply(`${section('Tes dernières commandes')}\n\n${text}`, { parse_mode: 'HTML' });
 });
 
 if (features.loyalty.enabled) {
   bot.command('fidelite', async (ctx) => {
     const s = loyaltyStatus(userId(ctx));
+    const reward = esc(s.rewardLabel);
     const line =
       s.rewardsAvailable > 0
-        ? `🎁 Tu as ${s.rewardsAvailable} récompense(s) : ${s.rewardLabel}. Signale-le en commandant !`
-        : `Plus que ${s.toNextReward} point(s) pour : ${s.rewardLabel}.`;
-    await ctx.reply(`⭐ *Fidélité*\n\nTu as ${s.points} point(s).\n${line}`, {
-      parse_mode: 'Markdown',
-    });
+        ? `🎁 Tu as ${s.rewardsAvailable} récompense(s) : <b>${reward}</b>. Signale-le en commandant !`
+        : `Plus que <b>${s.toNextReward}</b> point(s) pour : ${reward}.`;
+    await ctx.reply(
+      `${section('⭐ Fidélité')}\n\nSolde : <b>${s.points}</b> point(s).\n${line}`,
+      { parse_mode: 'HTML' },
+    );
   });
 }
 
@@ -165,9 +169,9 @@ if (features.referral.enabled) {
     }
     const info = referralInfo(uid);
     const parts = [
-      `👥 *Parrainage*\n\nTon code : *${info.code}*`,
-      `Partage-le : à sa 1re commande avec ton code, ton filleul a ${info.filleulDiscount} € ` +
-        `de réduction, et toi ${info.parrainReward} € sur ta commande suivante.`,
+      `${section('👥 Parrainage')}\n\nTon code : <code>${esc(info.code)}</code>`,
+      `Partage-le : à sa 1re commande avec ton code, ton filleul a <b>${info.filleulDiscount} €</b> ` +
+        `de réduction, et toi <b>${info.parrainReward} €</b> sur ta commande suivante.`,
     ];
     if (info.filleulsCompleted > 0) parts.push(`Filleuls actifs : ${info.filleulsCompleted}.`);
     if (info.creditAvailable > 0) {
@@ -175,7 +179,7 @@ if (features.referral.enabled) {
         `🎁 Tu as ${info.creditAvailable} € de crédit parrain, appliqué à ta prochaine commande.`,
       );
     }
-    await ctx.reply(parts.join('\n\n'), { parse_mode: 'Markdown' });
+    await ctx.reply(parts.join('\n\n'), { parse_mode: 'HTML' });
   });
 }
 

@@ -1,9 +1,14 @@
 /**
- * Les "vues" : a partir des donnees (menu, panier), on produit un couple
- * { text, keyboard } pret a etre affiche.
+ * Les "vues" du bot client : a partir des donnees (menu, panier), on produit un
+ * couple { text, keyboard } pret a etre affiche. `render()` (index.ts) decide
+ * d'editer le message existant ou d'en envoyer un neuf.
  *
- * Aucune vue n'envoie de message elle-meme : c'est le role de `render()` dans
- * index.ts de decider s'il faut editer le message existant ou en envoyer un neuf.
+ * Rendu : parse_mode HTML. Identite visuelle "carte / ticket de caisse" —
+ * cartouche monospace en tete de la carte, descriptions en blockquote, panier
+ * et recap en bloc <pre> aligne (echo du docket de la Mini App).
+ *
+ * REGLE : toute chaine dynamique (libelle produit, description, adresse...) passe
+ * par esc() avant d'entrer dans le HTML. Un `<` non echappe casse tout le message.
  */
 import { Markup } from 'telegraf';
 import { CB } from './callbacks';
@@ -32,11 +37,47 @@ export function isPhotoView(v: AnyView): v is PhotoView {
   return 'photo' in v;
 }
 
-/**
- * Bloc « ticket de caisse » monospace (```) : colonnes alignees, comme le
- * docket de la Mini App. A l'interieur d'un bloc code, Telegram n'interprete
- * aucun Markdown -> les libelles produit y sont sans danger.
- */
+// ---------------------------------------------------------------------------
+// Helpers de rendu HTML
+// ---------------------------------------------------------------------------
+
+/** Echappe le HTML. A appeler sur TOUTE valeur dynamique. */
+export function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+const LH_W = 26; // largeur du contenu centre (boite = 30, aligne sur le ticket)
+
+/** Cartouche monospace centre — l'en-tete "papier" de la carte. */
+export function letterhead(title: string, subtitle?: string): string {
+  const center = (t: string): string => {
+    const chars = [...t];
+    const clipped = chars.length > LH_W ? chars.slice(0, LH_W).join('') : t;
+    const pad = LH_W - [...clipped].length;
+    const left = Math.floor(pad / 2);
+    return ' '.repeat(left) + clipped + ' '.repeat(pad - left);
+  };
+  const bar = '─'.repeat(LH_W);
+  const rows = [`│ ${esc(center(title.toUpperCase()))} │`];
+  if (subtitle) rows.push(`│ ${esc(center(subtitle))} │`);
+  return `<pre>╭─${bar}─╮\n${rows.join('\n')}\n╰─${bar}─╯</pre>`;
+}
+
+/** En-tete de section (ecrans secondaires) : titre gras + filet. */
+export function section(title: string): string {
+  return `<b>${esc(title)}</b>\n━━━━━━━━━━━━━━━━━━`;
+}
+
+// ---------------------------------------------------------------------------
+// Bloc "ticket de caisse" <pre> : colonnes alignees, comme le docket Mini App
+// ---------------------------------------------------------------------------
+
 const RCP_W = 30;
 
 function receiptRow(left: string, right: string): string {
@@ -61,100 +102,139 @@ export function receiptBlock(
   }
   parts.push(rule, receiptRow('TOTAL', `${total} €`));
   if (opts.footer && opts.footer.length > 0) parts.push('', ...opts.footer);
-  return `\`\`\`\n${parts.join('\n')}\n\`\`\``;
+  // esc() sur tout le bloc : les libelles produit peuvent contenir < > &.
+  return `<pre>${esc(parts.join('\n'))}</pre>`;
 }
 
-/** Ecran d'accueil : la liste des categories. */
+// ---------------------------------------------------------------------------
+// Vues
+// ---------------------------------------------------------------------------
+
+/** Ecran d'accueil : cartouche + grille de categories. */
 export function categoriesView(): View {
   const menu = getMenu();
-  const rows = Object.entries(menu).map(([catId, cat]) => [
+  const catButtons = Object.entries(menu).map(([catId, cat]) =>
     Markup.button.callback(cat.label, CB.category(catId)),
-  ]);
-  rows.push([Markup.button.callback('🛒 Voir mon panier', CB.showCart())]);
+  );
+
+  const body =
+    catButtons.length > 0
+      ? 'Bonjour 👋\nChoisis une catégorie pour composer ta commande.'
+      : 'La carte est momentanément vide — reviens un peu plus tard.';
 
   return {
-    text: `*${features.displayName}*\n\nNotre menu du jour — choisis une catégorie :`,
-    keyboard: Markup.inlineKeyboard(rows),
+    text: `${letterhead(features.displayName, 'commande en ligne')}\n\n${body}`,
+    keyboard: Markup.inlineKeyboard([
+      ...chunk(catButtons, 2),
+      [Markup.button.callback('🛒 Mon panier', CB.showCart())],
+    ]),
   };
 }
 
-/** Ecran d'une categorie : la liste de ses produits. */
+/** Ecran d'une categorie : produits listes (desc en blockquote) + grille. */
 export function categoryView(catId: string): View | null {
   const cat = getMenu()[catId];
   if (!cat) return null;
+  const entries = Object.entries(cat.items);
 
-  const rows = Object.entries(cat.items).map(([prodId, item]) => [
-    Markup.button.callback(
-      `${item.label} — ${item.variants.length > 0 ? 'dès ' : ''}${item.price} €`,
-      CB.product(catId, prodId),
-    ),
-  ]);
-  rows.push([Markup.button.callback('⬅️ Retour aux catégories', CB.home())]);
+  const list = entries
+    .map(([, item]) => {
+      const price = `${item.variants.length > 0 ? 'dès ' : ''}${item.price} €`;
+      const desc = item.description
+        ? `\n<blockquote>${esc(item.description)}</blockquote>`
+        : '';
+      return `<b>${esc(item.label)}</b> — ${price}${desc}`;
+    })
+    .join('\n\n');
+
+  const buttons = entries.map(([prodId, item]) =>
+    Markup.button.callback(item.label, CB.product(catId, prodId)),
+  );
 
   return {
-    text: `*${cat.label}*`,
-    keyboard: Markup.inlineKeyboard(rows),
+    text: `${section(cat.label)}\n\n${list}`,
+    keyboard: Markup.inlineKeyboard([
+      ...chunk(buttons, 2),
+      [Markup.button.callback('⬅️ Retour à la carte', CB.home())],
+    ]),
   };
 }
 
-/** Ecran d'un produit : detail + ajout au panier (ou choix de la taille). */
+/** Ecran d'un produit : detail + ajout au panier (ou choix de la variante). */
 export function productView(catId: string, prodId: string): AnyView | null {
   const item = getMenu()[catId]?.items[prodId];
   if (!item) return null;
 
-  const rows =
-    item.variants.length > 0
-      ? item.variants.map((v) => [
-          Markup.button.callback(`${v.label} — ${v.price} €`, CB.addVariant(catId, prodId, v.id)),
-        ])
-      : [[Markup.button.callback('➕ Ajouter au panier', CB.addToCart(catId, prodId))]];
-  rows.push([Markup.button.callback('⬅️ Retour', CB.category(catId))]);
+  const back = Markup.button.callback('⬅️ Retour', CB.category(catId));
+  const hasVariants = item.variants.length > 0;
+
+  const rows = hasVariants
+    ? [
+        ...chunk(
+          item.variants.map((v) =>
+            Markup.button.callback(`${v.label} · ${v.price} €`, CB.addVariant(catId, prodId, v.id)),
+          ),
+          2,
+        ),
+        [back],
+      ]
+    : [[Markup.button.callback('➕ Ajouter au panier', CB.addToCart(catId, prodId))], [back]];
   const keyboard = Markup.inlineKeyboard(rows);
 
-  const priceLine =
-    item.variants.length > 0
-      ? `Choisis : _${features.variants.label.toLowerCase()}_ (à partir de *${item.price} €*)`
-      : `*${item.price} €*`;
-  const desc = item.description ? `${item.description}\n\n` : '\n';
-  const text = `*${item.label}*\n${desc}${priceLine}`;
+  const priceLine = hasVariants
+    ? `Choisis ${esc(features.variants.label.toLowerCase())} — à partir de <b>${item.price} €</b>`
+    : `Prix : <b>${item.price} €</b>`;
 
   if (item.image) {
-    return { photo: imagePath(item.image), caption: text, keyboard };
+    // Caption : pas de blockquote (support limite), description en italique.
+    const desc = item.description ? `<i>${esc(item.description)}</i>\n\n` : '';
+    return {
+      photo: imagePath(item.image),
+      caption: `<b>${esc(item.label)}</b>\n\n${desc}${priceLine}`,
+      keyboard,
+    };
   }
-  return { text, keyboard };
+
+  const parts = [section(item.label)];
+  if (item.description) parts.push(`<blockquote>${esc(item.description)}</blockquote>`);
+  parts.push(priceLine);
+  return { text: parts.join('\n\n'), keyboard };
 }
 
-/** Ecran du panier : recapitulatif + total + vider. */
+/** Ecran du panier : ticket <pre> + boutons ligne par ligne. */
 export function cartView(userId: number): View {
   const lines = getCart(userId);
 
   if (lines.length === 0) {
     return {
-      text: '🛒 *Ton panier est vide.*\n\nParcours le menu pour ajouter des articles.',
+      text:
+        `${section('Ton panier')}\n\n` +
+        "Il est vide pour l'instant.\nParcours la carte pour ajouter des articles.",
       keyboard: Markup.inlineKeyboard([
-        [Markup.button.callback('⬅️ Retour au menu', CB.home())],
+        [Markup.button.callback('⬅️ Retour à la carte', CB.home())],
       ]),
     };
   }
 
-  // Une ligne de boutons par article : ➖  "label x qty"  ➕  🗑
   const lineRows = lines.map((l) => {
     const key = lineKey(l.catId, l.prodId, l.variantId);
     return [
       Markup.button.callback('➖', CB.lineDec(key)),
-      Markup.button.callback(`${l.label} x${l.qty}`, 'noop'),
+      Markup.button.callback(`${l.label} ×${l.qty}`, 'noop'),
       Markup.button.callback('➕', CB.lineInc(key)),
       Markup.button.callback('🗑', CB.lineDel(key)),
     ];
   });
 
   return {
-    text: `🛒 *Ton panier*\n\n${receiptBlock(lines, cartTotal(userId))}`,
+    text: `${section('Ton panier')}\n\n${receiptBlock(lines, cartTotal(userId))}`,
     keyboard: Markup.inlineKeyboard([
       ...lineRows,
       [Markup.button.callback('✅ Valider la commande', CB.startCheckout())],
-      [Markup.button.callback('🗑 Vider le panier', CB.clearCart())],
-      [Markup.button.callback('⬅️ Retour au menu', CB.home())],
+      [
+        Markup.button.callback('🗑 Vider', CB.clearCart()),
+        Markup.button.callback('⬅️ La carte', CB.home()),
+      ],
     ]),
   };
 }

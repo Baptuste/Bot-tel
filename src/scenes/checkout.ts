@@ -34,7 +34,7 @@ import { getCustomer, upsertCustomer } from '../customers';
 import { createOrder, getLastOrder, getOrder } from '../orders';
 import { getAvailableSlots, hasUpcomingSlots, type Slot } from '../routes';
 import { features } from '../features';
-import { receiptBlock } from '../views';
+import { esc, letterhead, receiptBlock } from '../views';
 
 export const CHECKOUT_SCENE_ID = 'checkout';
 
@@ -59,9 +59,10 @@ const FLOW: string[] = [
   'confirm',
 ];
 
+/** En-tete d'etape (HTML). `title` est toujours une constante -> pas d'esc. */
 function stepHeader(key: string, title: string): string {
   const n = FLOW.indexOf(key) + 1;
-  return `Etape ${n}/${FLOW.length} - ${title}`;
+  return `<i>Étape ${n}/${FLOW.length}</i>  ·  <b>${title}</b>`;
 }
 
 function slotButtonLabel(s: Slot): string {
@@ -174,10 +175,10 @@ async function askAddress(ctx: BotContext): Promise<void> {
       (lastAddress
         ? 'Reprends ta dernière adresse ci-dessous, ou tape la nouvelle.'
         : 'Indique ton adresse complète (rue, numéro, ville).') +
-      '\n\n_/annuler pour abandonner._',
+      '\n\n<i>/annuler pour abandonner.</i>',
     reuseRows.length > 0
-      ? { parse_mode: 'Markdown', ...Markup.inlineKeyboard(reuseRows) }
-      : { parse_mode: 'Markdown' },
+      ? { parse_mode: 'HTML', ...Markup.inlineKeyboard(reuseRows) }
+      : { parse_mode: 'HTML' },
   );
   ctx.wizard.selectStep(STEP.collectAddress);
 }
@@ -234,7 +235,12 @@ async function promptPhone(ctx: BotContext): Promise<void> {
       (last
         ? 'Reprends ton dernier numéro ci-dessous, ou tape le nouveau.'
         : 'Ton numéro de téléphone (ex : 06 12 34 56 78) — il sert à te joindre pour la livraison.'),
-    last ? Markup.inlineKeyboard([[Markup.button.callback(`📞 ${last}`, 'co:phone')]]) : undefined,
+    {
+      parse_mode: 'HTML',
+      ...(last
+        ? Markup.inlineKeyboard([[Markup.button.callback(`📞 ${last}`, 'co:phone')]])
+        : {}),
+    },
   );
 }
 
@@ -282,10 +288,10 @@ async function promptSlot(ctx: BotContext): Promise<void> {
         ? 'Tous les créneaux sont complets pour le moment — on te livrera au plus tôt.'
         : 'Aucun créneau programmé pour le moment — on te livrera au plus tôt.';
 
-  await ctx.reply(
-    `${stepHeader('slot', 'Créneau de livraison')}\n\n${intro}`,
-    Markup.inlineKeyboard(rows),
-  );
+  await ctx.reply(`${stepHeader('slot', 'Créneau de livraison')}\n\n${intro}`, {
+    parse_mode: 'HTML',
+    ...Markup.inlineKeyboard(rows),
+  });
 }
 
 const collectSlot = new Composer<BotContext>();
@@ -329,8 +335,8 @@ async function promptNote(ctx: BotContext): Promise<void> {
 
   await ctx.reply(
     `${stepHeader('note', 'Précision de livraison')}\n\n` +
-      `_${features.deliveryNote.label}_\n\nTape ta précision, ou :`,
-    { parse_mode: 'Markdown', ...Markup.inlineKeyboard(rows) },
+      `<i>${esc(features.deliveryNote.label)}</i>\n\nTape ta précision, ou :`,
+    { parse_mode: 'HTML', ...Markup.inlineKeyboard(rows) },
   );
 }
 
@@ -373,19 +379,19 @@ function paymentLine(): string {
   return `💳 Paiement ${quand} (${methods})`;
 }
 
-/** Ligne "récompense fidélité disponible" du recap, si le client en a une. */
+/** Ligne "récompense fidélité disponible" du recap (HTML), si le client en a une. */
 function loyaltyLine(uid: number): string {
   if (!features.loyalty.enabled) return '';
   const s = loyaltyStatus(uid);
   return s.rewardsAvailable > 0
-    ? `🎁 Récompense fidélité à utiliser : ${s.rewardLabel} — signale-le au livreur.\n`
+    ? `🎁 Récompense fidélité à utiliser : <b>${esc(s.rewardLabel)}</b> — signale-le au livreur.`
     : '';
 }
 
 /**
- * Recap sous forme de ticket monospace (```), en echo du docket de la Mini App.
- * Tout ce qui est variable (adresse en texte libre incluse) vit DANS le bloc code :
- * Telegram n'y interprete aucun Markdown -> impossible de casser l'envoi.
+ * Recap sous forme de ticket monospace (<pre>), en echo du docket de la Mini App.
+ * Tout ce qui est variable (adresse en texte libre incluse) vit DANS le bloc <pre>
+ * (echappe par receiptBlock) -> impossible de casser le HTML du message.
  */
 async function promptConfirm(ctx: BotContext): Promise<void> {
   const uid = userId(ctx);
@@ -412,7 +418,7 @@ async function promptConfirm(ctx: BotContext): Promise<void> {
       (loyalty ? `${loyalty}\n\n` : '') +
       'On valide ?',
     {
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       ...Markup.inlineKeyboard([
         [Markup.button.callback('✅ Confirmer la commande', 'order:confirm')],
         [Markup.button.callback('❌ Annuler', 'order:cancel')],
@@ -491,13 +497,14 @@ confirmStep.action('order:confirm', async (ctx) => {
   }
 
   await ctx.editMessageText(
-    `✅ Commande #${orderId} enregistrée !\n\n` +
+    `${letterhead(`commande #${orderId}`, 'enregistrée ✓')}\n\n` +
       (ref && ref.discount > 0
-        ? `Réduction parrainage : -${ref.discount} € — total ${total} €\n`
+        ? `Réduction parrainage : −${ref.discount} € (total ${total} €)\n`
         : '') +
-      (features.deliverySlots.enabled ? `🕒 ${slotLabel ?? 'au plus tôt'}\n` : '') +
-      `\nStatut : ${statusLabel(initialStatusId())}.\n` +
-      'On te prévient dès qu\'elle est confirmée.',
+      (features.deliverySlots.enabled ? `🕒 ${esc(slotLabel ?? 'au plus tôt')}\n` : '') +
+      `\nStatut : <i>${esc(statusLabel(initialStatusId()))}</i>.\n` +
+      "On te prévient dès qu'elle est confirmée. Merci ! 🙏",
+    { parse_mode: 'HTML' },
   );
   await ctx.scene.leave();
 

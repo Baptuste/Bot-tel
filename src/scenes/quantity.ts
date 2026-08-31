@@ -14,7 +14,7 @@ import { Scenes } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { userId, type BotContext, type QuantityState } from '../context';
 import { addToCart } from '../cart';
-import { cartView } from '../views';
+import { cartView, esc } from '../views';
 
 export const QUANTITY_SCENE_ID = 'quantity';
 
@@ -26,7 +26,8 @@ export const quantityScene = new Scenes.BaseScene<BotContext>(QUANTITY_SCENE_ID)
 quantityScene.enter(async (ctx) => {
   const { label } = ctx.scene.state as QuantityState;
   await ctx.reply(
-    `Combien de « ${label} » ? Envoie un nombre de ${MIN_QTY} à ${MAX_QTY}, ou /annuler.`,
+    `<b>${esc(label)}</b>\nCombien en veux-tu ? Envoie un nombre de ${MIN_QTY} à ${MAX_QTY} (ou /annuler).`,
+    { parse_mode: 'HTML' },
   );
 });
 
@@ -54,8 +55,8 @@ quantityScene.on(message('text'), async (ctx) => {
 
   // Un seul message : confirmation + recapitulatif du panier + bouton valider.
   const view = cartView(uid);
-  await ctx.reply(`✅ *${qty} × ${label}* ajouté au panier.\n\n${view.text}`, {
-    parse_mode: 'Markdown',
+  await ctx.reply(`✅ <b>${qty} × ${esc(label)}</b> ajouté au panier.\n\n${view.text}`, {
+    parse_mode: 'HTML',
     ...view.keyboard,
   });
 });
