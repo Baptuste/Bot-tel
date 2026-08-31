@@ -90,7 +90,9 @@ export function Orders() {
       </div>
 
       {loading && <p className="muted">Chargement…</p>}
-      {!loading && !error && visible.length === 0 && <p className="muted">Aucune commande.</p>}
+      {!loading && !error && visible.length === 0 && (
+        <p className="empty">{filter === 'open' ? 'Rien à traiter pour le moment. 🎉' : 'Aucune commande dans cette vue.'}</p>
+      )}
 
       {visible.map((o) => {
         const flag = reliabilityBadge(o.customer.reliability, o.customer.blocked);

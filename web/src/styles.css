@@ -147,6 +147,36 @@ h2 {
   line-height: 1.3;
 }
 
+/* --- En-tête : en-tête de carnet à souches (nom de la boutique) --- */
+.appbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-2);
+  padding: var(--s-1) 0 var(--s-3);
+  border-bottom: 2px dashed var(--line-strong);
+}
+
+.appbar__name {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appbar__tag {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--hint);
+}
+
 /* --- Onglets : soulignés, marque de calage rouge sous l'actif --- */
 .tabs {
   display: flex;
@@ -217,6 +247,19 @@ h2 {
 
 .card.clickable {
   cursor: pointer;
+}
+
+.card.clickable:active {
+  transform: scale(0.992);
+  transition: transform 0.08s ease;
+}
+
+/* État vide : calme, pas une erreur (souvent : rien à faire = bonne nouvelle). */
+.empty {
+  text-align: center;
+  color: var(--hint);
+  font-size: var(--fs-sm);
+  padding: var(--s-6) var(--s-3);
 }
 
 .row {
@@ -649,6 +692,22 @@ textarea {
 
 .dash-route strong {
   color: var(--text);
+}
+
+/* --- Barre de progression (tournée : bordereau qu'on coche) --- */
+.progress {
+  height: 4px;
+  margin-top: var(--s-1);
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress > span {
+  display: block;
+  height: 100%;
+  background: var(--st-progress);
+  transition: width 0.4s ease;
 }
 
 /* --- Fiabilité client : 4 chiffres --- */

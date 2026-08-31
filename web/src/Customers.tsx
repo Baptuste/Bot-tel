@@ -61,7 +61,9 @@ export function Customers() {
       />
 
       {loading && <p className="muted">Chargement…</p>}
-      {!loading && visible.length === 0 && <p className="muted">Aucun client.</p>}
+      {!loading && visible.length === 0 && (
+        <p className="empty">{search ? 'Aucun client ne correspond.' : 'Aucun client pour l’instant.'}</p>
+      )}
 
       {visible.map((c) => {
         const badge = reliabilityBadge(c.reliability, c.blocked);

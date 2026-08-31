@@ -34,6 +34,7 @@ import { getCustomer, upsertCustomer } from '../customers';
 import { createOrder, getLastOrder, getOrder } from '../orders';
 import { getAvailableSlots, hasUpcomingSlots, type Slot } from '../routes';
 import { features } from '../features';
+import { receiptBlock } from '../views';
 
 export const CHECKOUT_SCENE_ID = 'checkout';
 
@@ -381,37 +382,42 @@ function loyaltyLine(uid: number): string {
     : '';
 }
 
-// Recap : PAS de parse_mode (l'adresse est du texte libre, un * ou _ casserait
-// l'envoi et bloquerait le checkout). Hierarchie par icones + capitales.
+/**
+ * Recap sous forme de ticket monospace (```), en echo du docket de la Mini App.
+ * Tout ce qui est variable (adresse en texte libre incluse) vit DANS le bloc code :
+ * Telegram n'y interprete aucun Markdown -> impossible de casser l'envoi.
+ */
 async function promptConfirm(ctx: BotContext): Promise<void> {
   const uid = userId(ctx);
   const lines = getCart(uid);
   const s = state(ctx);
-  const body = lines.map((l) => `•  ${l.label}  ×${l.qty}  —  ${l.price * l.qty} €`).join('\n');
 
   const subtotal = cartTotal(uid);
   const ref = features.referral.enabled ? previewReferral(uid, subtotal) : null;
-  const totalBlock =
-    ref && ref.discount > 0
-      ? `Sous-total : ${subtotal} €\n${ref.lines.join('\n')}\nTOTAL : ${subtotal - ref.discount} €\n`
-      : `TOTAL : ${subtotal} €\n`;
+  const total = subtotal - (ref?.discount ?? 0);
+
+  const footer = [
+    ...(s.address ? [`📍 ${s.address}`] : []),
+    ...(s.phone ? [`📞 ${s.phone}`] : []),
+    ...(features.deliverySlots.enabled ? [`🕒 ${s.slotLabel ?? 'au plus tôt'}`] : []),
+    ...(s.deliveryNote ? [`📝 ${s.deliveryNote}`] : []),
+    paymentLine(),
+  ];
+  const loyalty = loyaltyLine(uid).trim();
 
   await ctx.reply(
     `${stepHeader('confirm', 'Récapitulatif')}\n\n` +
-      `${body}\n\n` +
-      totalBlock +
-      '\n' +
-      (s.address ? `📍 ${s.address}\n` : '') +
-      (s.phone ? `📞 ${s.phone}\n` : '') +
-      (features.deliverySlots.enabled ? `🕒 ${s.slotLabel ?? 'au plus tôt'}\n` : '') +
-      (s.deliveryNote ? `📝 ${s.deliveryNote}\n` : '') +
-      `${paymentLine()}\n` +
-      loyaltyLine(uid) +
-      '\nOn valide ?',
-    Markup.inlineKeyboard([
-      [Markup.button.callback('✅ Confirmer la commande', 'order:confirm')],
-      [Markup.button.callback('❌ Annuler', 'order:cancel')],
-    ]),
+      receiptBlock(lines, total, { beforeTotal: ref?.lines ?? [], footer }) +
+      '\n\n' +
+      (loyalty ? `${loyalty}\n\n` : '') +
+      'On valide ?',
+    {
+      parse_mode: 'Markdown',
+      ...Markup.inlineKeyboard([
+        [Markup.button.callback('✅ Confirmer la commande', 'order:confirm')],
+        [Markup.button.callback('❌ Annuler', 'order:cancel')],
+      ]),
+    },
   );
 }
 

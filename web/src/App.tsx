@@ -23,6 +23,10 @@ export function App() {
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
+  useEffect(() => {
+    if (features) document.title = `${features.displayName} · Admin`;
+  }, [features]);
+
   if (!initData) {
     return (
       <div className="error">
@@ -46,6 +50,10 @@ export function App() {
 
   return (
     <FeaturesContext.Provider value={features}>
+      <header className="appbar">
+        <span className="appbar__name">{features.displayName}</span>
+        <span className="appbar__tag">Admin</span>
+      </header>
       <nav className="tabs">
         {tabs.map((t) => (
           <button

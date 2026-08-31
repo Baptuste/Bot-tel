@@ -162,7 +162,9 @@ export function Routes() {
         </div>
       )}
 
-      {routes.length === 0 && !loading && <p className="muted">Aucune tournée.</p>}
+      {routes.length === 0 && !loading && (
+        <p className="empty">Aucune tournée. Elles se créent depuis les modèles, ou à la main ci-dessus.</p>
+      )}
 
       {shownRoutes.map((r) => (
         <div key={r.id} className="card">
@@ -182,6 +184,22 @@ export function Routes() {
               Livreur : {r.driver?.name ?? 'non affecté'}
             </div>
           )}
+
+          {r.status === 'started' &&
+            (() => {
+              const done = r.orders.filter((o) => flow.role(o.status) === 'fulfilled').length;
+              const pct = r.orders.length > 0 ? Math.round((done / r.orders.length) * 100) : 0;
+              return (
+                <div style={{ marginBottom: 8 }}>
+                  <div className="muted small">
+                    {done} / {r.orders.length} livrées
+                  </div>
+                  <div className="progress" aria-hidden="true">
+                    <span style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })()}
 
           {r.orders.length === 0 && <p className="muted">Aucune commande affectée.</p>}
           {r.orders.map((o, i) => (

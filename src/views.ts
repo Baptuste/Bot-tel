@@ -32,6 +32,38 @@ export function isPhotoView(v: AnyView): v is PhotoView {
   return 'photo' in v;
 }
 
+/**
+ * Bloc « ticket de caisse » monospace (```) : colonnes alignees, comme le
+ * docket de la Mini App. A l'interieur d'un bloc code, Telegram n'interprete
+ * aucun Markdown -> les libelles produit y sont sans danger.
+ */
+const RCP_W = 30;
+
+function receiptRow(left: string, right: string): string {
+  const max = RCP_W - right.length - 2;
+  const l = left.length > max ? `${left.slice(0, Math.max(1, max - 1))}…` : left;
+  const dots = Math.max(2, RCP_W - l.length - right.length - 2);
+  return `${l} ${'.'.repeat(dots)} ${right}`;
+}
+
+export function receiptBlock(
+  items: { label: string; qty: number; price: number }[],
+  total: number,
+  opts: { beforeTotal?: string[]; footer?: string[] } = {},
+): string {
+  const rule = '─'.repeat(RCP_W);
+  const parts: string[] = items.map((l) =>
+    receiptRow(`${l.label} ×${l.qty}`, `${l.price * l.qty} €`),
+  );
+  for (const s of opts.beforeTotal ?? []) {
+    const m = s.match(/^(.*?)\s*:\s*(.+)$/);
+    parts.push(m ? receiptRow(m[1]!, m[2]!) : s);
+  }
+  parts.push(rule, receiptRow('TOTAL', `${total} €`));
+  if (opts.footer && opts.footer.length > 0) parts.push('', ...opts.footer);
+  return `\`\`\`\n${parts.join('\n')}\n\`\`\``;
+}
+
 /** Ecran d'accueil : la liste des categories. */
 export function categoriesView(): View {
   const menu = getMenu();
@@ -105,10 +137,6 @@ export function cartView(userId: number): View {
     };
   }
 
-  const body = lines
-    .map((l) => `•  ${l.label}  ×${l.qty}  —  ${l.price * l.qty} €`)
-    .join('\n');
-
   // Une ligne de boutons par article : ➖  "label x qty"  ➕  🗑
   const lineRows = lines.map((l) => {
     const key = lineKey(l.catId, l.prodId, l.variantId);
@@ -121,7 +149,7 @@ export function cartView(userId: number): View {
   });
 
   return {
-    text: `🛒 *Ton panier*\n\n${body}\n\n*Total : ${cartTotal(userId)} €*`,
+    text: `🛒 *Ton panier*\n\n${receiptBlock(lines, cartTotal(userId))}`,
     keyboard: Markup.inlineKeyboard([
       ...lineRows,
       [Markup.button.callback('✅ Valider la commande', CB.startCheckout())],

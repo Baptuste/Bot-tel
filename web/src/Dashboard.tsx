@@ -65,16 +65,21 @@ export function Dashboard({ onShowPending, refreshKey }: Props) {
         </button>
       )}
 
-      {data.activeRoutes.map((r) => (
-        <div key={r.id} className="dash-route">
-          🛵 Tournée {r.label} ({r.date === new Date().toISOString().slice(0, 10) ? "auj." : r.date})
-          {r.driver ? ` — ${r.driver}` : ''} :{' '}
-          <strong>
-            {r.delivered}/{r.total}
-          </strong>{' '}
-          livrées
-        </div>
-      ))}
+      {data.activeRoutes.map((r) => {
+        const pct = r.total > 0 ? Math.round((r.delivered / r.total) * 100) : 0;
+        const today = new Date().toISOString().slice(0, 10);
+        return (
+          <div key={r.id} className="dash-route">
+            <div>
+              🛵 {r.label} ({r.date === today ? 'auj.' : r.date})
+              {r.driver ? ` — ${r.driver}` : ''} · <strong>{r.delivered}/{r.total}</strong> livrées
+            </div>
+            <div className="progress" aria-hidden="true">
+              <span style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
