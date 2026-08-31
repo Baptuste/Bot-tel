@@ -34,8 +34,8 @@ import { getCustomer, upsertCustomer } from '../customers';
 import { createOrder, getLastOrder, getOrder } from '../orders';
 import { getAvailableSlots, hasUpcomingSlots, type Slot } from '../routes';
 import { features } from '../features';
-import { esc } from '../views';
-import { orderTicketPng, receiptPng } from '../render/cards';
+import { esc, receiptBlock } from '../views';
+import { orderTicketPng } from '../render/cards';
 
 export const CHECKOUT_SCENE_ID = 'checkout';
 
@@ -389,7 +389,7 @@ function loyaltyLine(uid: number): string {
     : '';
 }
 
-/** Recap : un ticket de caisse (image generee), en echo du docket de la Mini App. */
+/** Recap : ticket monospace (<pre>). Tout le variable est DANS le bloc -> HTML sur. */
 async function promptConfirm(ctx: BotContext): Promise<void> {
   const uid = userId(ctx);
   const lines = getCart(uid);
@@ -399,30 +399,22 @@ async function promptConfirm(ctx: BotContext): Promise<void> {
   const ref = features.referral.enabled ? previewReferral(uid, subtotal) : null;
   const total = subtotal - (ref?.discount ?? 0);
 
-  const footerLines = [
-    ...(s.address ? [s.address] : []),
-    ...(s.phone ? [s.phone] : []),
-    ...(features.deliverySlots.enabled ? [`Créneau : ${s.slotLabel ?? 'au plus tôt'}`] : []),
-    ...(s.deliveryNote ? [s.deliveryNote] : []),
+  const footer = [
+    ...(s.address ? [`📍 ${s.address}`] : []),
+    ...(s.phone ? [`📞 ${s.phone}`] : []),
+    ...(features.deliverySlots.enabled ? [`🕒 ${s.slotLabel ?? 'au plus tôt'}`] : []),
+    ...(s.deliveryNote ? [`📝 ${s.deliveryNote}`] : []),
     paymentLine(),
   ];
-
-  const png = receiptPng({
-    title: 'Récapitulatif',
-    items: lines,
-    discounts: ref && ref.discount > 0 ? [{ label: 'Parrainage', amount: ref.discount }] : [],
-    total,
-    footerLines,
-  });
-
   const loyalty = loyaltyLine(uid).trim();
-  const caption =
-    stepHeader('confirm', 'Récapitulatif') + (loyalty ? `\n${loyalty}` : '') + '\n\nTout est bon ?';
 
-  await ctx.replyWithPhoto(
-    { source: png },
+  await ctx.reply(
+    `${stepHeader('confirm', 'Récapitulatif')}\n\n` +
+      receiptBlock(lines, total, { beforeTotal: ref?.lines ?? [], footer }) +
+      '\n\n' +
+      (loyalty ? `${loyalty}\n\n` : '') +
+      'On valide ?',
     {
-      caption,
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard([
         [Markup.button.callback('✅ Confirmer la commande', 'order:confirm')],
@@ -454,8 +446,7 @@ confirmStep.action('order:confirm', async (ctx) => {
   const missingInfo =
     (features.requiresAddress && !address) || (features.requiresPhone && !phone);
   if (lines.length === 0 || missingInfo) {
-    await ctx.deleteMessage().catch(() => undefined); // le recap est une photo
-    await ctx.reply(
+    await ctx.editMessageText(
       removed.length > 0
         ? 'Ton panier est vide après le retrait des produits indisponibles. Tape /start pour recommencer.'
         : 'Commande impossible (panier vide ou infos manquantes). Tape /start pour recommencer.',
@@ -507,7 +498,8 @@ confirmStep.action('order:confirm', async (ctx) => {
     ...(features.deliverySlots.enabled ? [`Créneau : ${slotLabel ?? 'au plus tôt'}`] : []),
     "On te prévient dès qu'elle est confirmée.",
   ];
-  await ctx.deleteMessage().catch(() => undefined); // le recap etait une photo
+  // Le recu de commande est une IMAGE -> on retire le recap texte et on l'envoie.
+  await ctx.deleteMessage().catch(() => undefined);
   await ctx.replyWithPhoto(
     { source: orderTicketPng(orderId, statusLabel(initialStatusId()), ticketLines) },
     { caption: `<b>✓ Commande #${orderId} enregistrée.</b> Merci ! 🙏`, parse_mode: 'HTML' },
@@ -521,8 +513,7 @@ confirmStep.action('order:confirm', async (ctx) => {
 
 confirmStep.action('order:cancel', async (ctx) => {
   await ctx.answerCbQuery('Commande abandonnée');
-  await ctx.deleteMessage().catch(() => undefined); // le recap est une photo
-  await ctx.reply('Commande abandonnée. Ton panier est conservé.');
+  await ctx.editMessageText('Commande abandonnée. Ton panier est conservé.');
   await ctx.scene.leave();
 });
 

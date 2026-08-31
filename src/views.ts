@@ -14,7 +14,6 @@ import { CB } from './callbacks';
 import { cartTotal, getCart, lineKey } from './cart';
 import { getMenu } from './catalog';
 import { features } from './features';
-import { menuPagePng } from './render/cards';
 import { imagePath } from './uploads';
 
 type InlineKeyboard = ReturnType<typeof Markup.inlineKeyboard>;
@@ -122,29 +121,26 @@ export function categoriesView(): View {
   };
 }
 
-/** Ecran d'une categorie : une page de carte generee (image) + grille. */
-export function categoryView(catId: string): AnyView | null {
+/** Ecran d'une categorie : produits listes + grille de boutons. */
+export function categoryView(catId: string): View | null {
   const cat = getMenu()[catId];
   if (!cat) return null;
   const entries = Object.entries(cat.items);
+
+  const list = entries
+    .map(([, item]) => {
+      const price = `${item.variants.length > 0 ? 'dès ' : ''}${item.price} €`;
+      const desc = item.description ? `\n<i>${esc(item.description)}</i>` : '';
+      return `<b>${esc(item.label)}</b>  ·  ${price}${desc}`;
+    })
+    .join('\n\n');
 
   const buttons = entries.map(([prodId, item]) =>
     Markup.button.callback(item.label, CB.product(catId, prodId)),
   );
 
-  const photo = menuPagePng({
-    category: cat.label,
-    items: entries.map(([, item]) => ({
-      label: item.label,
-      price: item.price,
-      fromPrice: item.variants.length > 0,
-      description: item.description,
-    })),
-  });
-
   return {
-    photo,
-    caption: `<b>${esc(cat.label)}</b> — touche un produit pour l'ajouter 👇`,
+    text: `${section(cat.label)}\n\n${list}`,
     keyboard: Markup.inlineKeyboard([
       ...chunk(buttons, 2),
       [
