@@ -206,11 +206,15 @@ Typo : pile système pour la prose, **IBM Plex Mono** pour toute la donnée.
 | **9** | *Identité visuelle du bot client* (jugé trop « menu basique »). Passage **parse_mode HTML** ; descriptions produits en `<blockquote>` ; boutons en **grille 2 colonnes** ; en-têtes d'étape checkout stylés ; commandes client en HTML. Helper `esc()` sur toute valeur dynamique. | `8c85e80` |
 | **10** | Le cartouche `<pre>` ASCII du Lot 9 était moche → **vraie bannière image** (`assets/menu-banner.png`) sur `/start`, nom de la boutique en caption. `section()` = `<b>` seul. | `e271925` |
 | — | Blockquotes (fond bleuté) jugées non conformes → italique + gras. | `d71d09a` |
-| **11** | *Le texte ne suffit pas.* Les écrans clés du bot deviennent des **cartes-images générées à la volée** : `@resvg/resvg-js` (WASM) rasterise du SVG composé à la main (IBM Plex Mono embarqué). `src/render/cards.ts` : **menuPagePng** (page de carte d'une catégorie), **receiptPng** (ticket de caisse pour le récap checkout), **orderTicketPng** (reçu tamponné pour la confirmation). Identité « bon de commande » : papier, encre, filet rouge, tampon, code-barres, bord déchiré. `categoryView` → image ; panier reste en `<pre>` (édition ± rapide). | `c4ea3ff` |
+| **11** | *Le texte ne suffit pas.* Essai de **cartes-images générées** (`@resvg/resvg-js`, SVG composé à la main, IBM Plex Mono embarqué). `src/render/cards.ts`. | `c4ea3ff` |
+| — | **Retour utilisateur : cartes-menu « trop amateur ».** Menu + récap checkout → **retour au texte**. On garde seulement `orderTicketPng` (reçu de confirmation). `menuPagePng` supprimé. | `805d5fe` |
 
-**Reste possible plus tard** : police emoji monochrome pour les cartes ;
-carte-image pour le produit sans photo ; choix explicite du mode de paiement +
-pourboire au checkout (reliquat V2).
+**État du bot client** : `/start` = bannière image (à retravailler) · menu / produit /
+panier / récap = **texte HTML** (gras, italique, `<pre>` pour les tickets) · confirmation
+de commande = **reçu-image** (`orderTicketPng`).
+
+**Reste** : retravailler l'accueil ; choix explicite du mode de paiement + pourboire
+au checkout (reliquat V2).
 
 Une fois ce chantier jugé satisfaisant : reprise de `feuille-de-route.md`
 (Partie 4 configurateur, module marketing).
