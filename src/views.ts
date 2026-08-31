@@ -114,10 +114,7 @@ export function categoriesView(): View {
       : 'La carte est momentanément vide — reviens un peu plus tard.';
 
   return {
-    text:
-      `<b>${esc(features.displayName)}</b>\n` +
-      `<blockquote>${esc(TAGLINE)}</blockquote>\n` +
-      body,
+    text: `<b>${esc(features.displayName)}</b>\n<i>${esc(TAGLINE)}</i>\n\n${body}`,
     keyboard: Markup.inlineKeyboard([
       ...chunk(catButtons, 2),
       [Markup.button.callback('🛒 Mon panier', CB.showCart())],
@@ -134,10 +131,8 @@ export function categoryView(catId: string): View | null {
   const list = entries
     .map(([, item]) => {
       const price = `${item.variants.length > 0 ? 'dès ' : ''}${item.price} €`;
-      const desc = item.description
-        ? `\n<blockquote>${esc(item.description)}</blockquote>`
-        : '';
-      return `<b>${esc(item.label)}</b> — ${price}${desc}`;
+      const desc = item.description ? `\n<i>${esc(item.description)}</i>` : '';
+      return `<b>${esc(item.label)}</b>  ·  ${price}${desc}`;
     })
     .join('\n\n');
 
@@ -189,8 +184,8 @@ export function productView(catId: string, prodId: string): AnyView | null {
     };
   }
 
-  const parts = [section(item.label)];
-  if (item.description) parts.push(`<blockquote>${esc(item.description)}</blockquote>`);
+  const parts = [`<b>${esc(item.label)}</b>`];
+  if (item.description) parts.push(`<i>${esc(item.description)}</i>`);
   parts.push(priceLine);
   return { text: parts.join('\n\n'), keyboard };
 }

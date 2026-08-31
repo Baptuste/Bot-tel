@@ -505,7 +505,7 @@ confirmStep.action('order:confirm', async (ctx) => {
   ];
   await ctx.editMessageText(
     `<b>✓ Commande #${orderId} enregistrée</b>\n\n` +
-      `<blockquote>${esc(recapLines.join('\n'))}</blockquote>\n` +
+      `${esc(recapLines.join('\n'))}\n\n` +
       "On te prévient dès qu'elle est confirmée. Merci ! 🙏",
     { parse_mode: 'HTML' },
   );
