@@ -19,7 +19,27 @@ interface TgWebApp {
   showConfirm: (message: string, callback: (confirmed: boolean) => void) => void;
   HapticFeedback?: {
     notificationOccurred: (type: 'success' | 'warning' | 'error') => void;
+    impactOccurred?: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void;
+    selectionChanged?: () => void;
   };
+  MainButton: {
+    setParams: (p: {
+      text?: string;
+      color?: string;
+      text_color?: string;
+      is_active?: boolean;
+      is_visible?: boolean;
+    }) => void;
+    show: () => void;
+    hide: () => void;
+    enable: () => void;
+    disable: () => void;
+    showProgress: (leaveActive?: boolean) => void;
+    hideProgress: () => void;
+    onClick: (cb: () => void) => void;
+    offClick: (cb: () => void) => void;
+  };
+  close: () => void;
 }
 
 declare global {
@@ -58,4 +78,11 @@ export function promptDialog(message: string): string | null {
   } catch {
     return '';
   }
+}
+
+export function haptic(type: 'success' | 'warning' | 'error'): void {
+  tg?.HapticFeedback?.notificationOccurred(type);
+}
+export function tap(): void {
+  tg?.HapticFeedback?.selectionChanged?.();
 }

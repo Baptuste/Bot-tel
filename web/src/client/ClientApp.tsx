@@ -1,11 +1,127 @@
 /**
  * Mini App CLIENT — la vitrine : catalogue photos, panier, checkout.
- * (Coquille — l'UI arrive aux étapes suivantes du chantier.)
+ * Panier partagé avec le bot (table `cart` en base, via /api/shop).
  */
+import { useCallback, useEffect, useState } from 'react';
+import { shop } from './api';
+import { Cart } from './Cart';
+import { Catalog } from './Catalog';
+import { Product } from './Product';
+import { alertDialog, haptic } from '../telegram';
+import type { CartDto, Menu, ShopConfig } from './types';
+
+type Screen =
+  | { name: 'catalog' }
+  | { name: 'product'; catId: string; prodId: string }
+  | { name: 'cart' }
+  | { name: 'checkout' }
+  | { name: 'orders' };
+
 export function ClientApp() {
+  const [data, setData] = useState<{ menu: Menu; config: ShopConfig } | null>(null);
+  const [cart, setCart] = useState<CartDto>({ lines: [], total: 0, count: 0 });
+  const [screen, setScreen] = useState<Screen>({ name: 'catalog' });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    Promise.all([shop.menu(), shop.cart()])
+      .then(([m, c]) => {
+        setData(m);
+        setCart(c);
+        document.title = m.config.displayName;
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, []);
+
+  const run = useCallback(async (fn: () => Promise<CartDto>) => {
+    setBusy(true);
+    try {
+      setCart(await fn());
+    } catch (e) {
+      alertDialog(e instanceof Error ? e.message : 'Erreur');
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  const quickAdd = useCallback(
+    (catId: string, prodId: string) => {
+      void run(() => shop.addToCart(catId, prodId, 1)).then(() => haptic('success'));
+    },
+    [run],
+  );
+
+  const addFromDetail = useCallback(
+    (catId: string, prodId: string, qty: number, variantId?: string) => {
+      void run(() => shop.addToCart(catId, prodId, qty, variantId)).then(() => {
+        haptic('success');
+        setScreen({ name: 'catalog' });
+      });
+    },
+    [run],
+  );
+
+  const setQty = useCallback(
+    (key: string, qty: number) => void run(() => shop.setLineQty(key, qty)),
+    [run],
+  );
+
+  if (error) return <div className="error">Chargement impossible : {error}</div>;
+  if (!data) return <p className="muted">Chargement…</p>;
+  const { menu, config } = data;
+
+  if (screen.name === 'product') {
+    const item = menu[screen.catId]?.items[screen.prodId];
+    if (!item) {
+      setScreen({ name: 'catalog' });
+      return null;
+    }
+    return (
+      <Product
+        item={item}
+        catLabel={menu[screen.catId]?.label ?? ''}
+        variantLabel={config.variants.label}
+        onAdd={(qty, variantId) => addFromDetail(screen.catId, screen.prodId, qty, variantId)}
+        onBack={() => setScreen({ name: 'catalog' })}
+      />
+    );
+  }
+
+  if (screen.name === 'cart') {
+    return (
+      <Cart
+        cart={cart}
+        menu={menu}
+        busy={busy}
+        onSetQty={setQty}
+        onCheckout={() => alertDialog('Checkout — étape suivante du chantier.')}
+        onBack={() => setScreen({ name: 'catalog' })}
+      />
+    );
+  }
+
+  if (screen.name === 'orders') {
+    return (
+      <div className="shop">
+        <h1 className="shop-title">Mes commandes</h1>
+        <p className="empty">Historique — étape suivante du chantier.</p>
+        <button className="linkback" onClick={() => setScreen({ name: 'catalog' })}>
+          ← La carte
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="shop">
-      <p className="muted">Boutique en ligne — bientôt disponible ici.</p>
-    </div>
+    <Catalog
+      menu={menu}
+      config={config}
+      cart={cart}
+      onOpen={(catId, prodId) => setScreen({ name: 'product', catId, prodId })}
+      onQuickAdd={quickAdd}
+      onCart={() => setScreen({ name: 'cart' })}
+      onOrders={() => setScreen({ name: 'orders' })}
+    />
   );
 }
