@@ -207,14 +207,18 @@ Typo : pile système pour la prose, **IBM Plex Mono** pour toute la donnée.
 | **10** | Le cartouche `<pre>` ASCII du Lot 9 était moche → **vraie bannière image** (`assets/menu-banner.png`) sur `/start`, nom de la boutique en caption. `section()` = `<b>` seul. | `e271925` |
 | — | Blockquotes (fond bleuté) jugées non conformes → italique + gras. | `d71d09a` |
 | **11** | *Le texte ne suffit pas.* Essai de **cartes-images générées** (`@resvg/resvg-js`, SVG composé à la main, IBM Plex Mono embarqué). `src/render/cards.ts`. | `c4ea3ff` |
-| — | **Retour utilisateur : cartes-menu « trop amateur ».** Menu + récap checkout → **retour au texte**. On garde seulement `orderTicketPng` (reçu de confirmation). `menuPagePng` supprimé. | `805d5fe` |
+| — | **Retour utilisateur : cartes-menu « trop amateur ».** Menu + récap → retour texte. | `805d5fe` |
+| **12** | *Décision cadrée avec l'utilisateur* : la Mini App client portera la vitrine → **le bot est recentré** sur son rôle du cadrage (canal de commande de repli + flux de notifications). `/start` = nom + tagline + carte (plus de bannière). Reçu = texte. **`@resvg/resvg-js`, `src/render/`, `assets/` supprimés.** Notifications client sur un **gabarit unique** : `<emoji> <b>Commande #{id} — statut</b>` + détail. Appliqué aux 2 flows, à la progression de tournée, au palier fidélité. | `bd9f25c` |
 
-**État du bot client** : `/start` = bannière image (à retravailler) · menu / produit /
-panier / récap = **texte HTML** (gras, italique, `<pre>` pour les tickets) · confirmation
-de commande = **reçu-image** (`orderTicketPng`).
+## Prochain chantier — Mini App client
 
-**Reste** : retravailler l'accueil ; choix explicite du mode de paiement + pourboire
-au checkout (reliquat V2).
+Simulation validée : **[Le parcours de Léa](https://claude.ai/code/artifact/db398e4f-84a6-4647-8890-4dcbd07bbe13)**.
+Architecture : panier + commandes en base, lus/écrits par le bot ET la Mini App.
+4 briques : table `cart` + `cart.ts` sur DB · mode client dans `web/` · `/api/cart` +
+`/api/orders` client · bouton d'ouverture dans le bot. Puis l'UI client (catalogue
+photos, panier, checkout). Plan détaillé à faire avant de coder.
+
+**Reliquat V2** : choix explicite du mode de paiement + pourboire au checkout.
 
 Une fois ce chantier jugé satisfaisant : reprise de `feuille-de-route.md`
 (Partie 4 configurateur, module marketing).
