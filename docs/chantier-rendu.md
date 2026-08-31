@@ -203,9 +203,11 @@ Typo : pile système pour la prose, **IBM Plex Mono** pour toute la donnée.
 | **6** | Écrans Mini App restants : accents sur toute la copie admin, en-têtes `<h2>` (intercalaires mono), `.product` flex-wrap (fix wrapping « dès 9 € »), `.badge.cancelled` → `.flag`, séparateurs `·`. | `5e73196` |
 | **7** | Feedback : `answerCbQuery` utiles (« Créneau choisi », « Commande envoyée ! »). Passage global **EUR → €** (bot + Mini App). | `76257a7` |
 | **8** | *Styliser davantage.* Mini App : **bandeau d'en-tête** (nom boutique, était absent), **barre de progression** des tournées (dashboard + carte), états vides calmes, effet d'appui. Bot : **panier + récap checkout en bloc monospace `\`\`\``** (colonnes alignées, points de conduite, TOTAL) — écho direct du docket. Le récap met tout dans le bloc → `parse_mode` réactivé sans risque de casse. | `a1b2783` |
+| **9** | *Identité visuelle du bot client* (jugé trop « menu basique »). Passage **parse_mode HTML** : cartouche monospace centré (`letterhead`) en tête de carte + confirmation ; écran catégorie avec descriptions en `<blockquote>` (barre latérale Telegram) + prix gras + boutons en **grille 2 colonnes** ; écran produit encadré ; en-têtes d'étape checkout stylés ; `/help` `/mes_commandes` `/fidelite` `/parrainage` en HTML. Helper `esc()` sur toute valeur dynamique. 5 vues validées en envoi test (Telegram accepte le HTML). | `8c85e80` |
 
-**Reste possible plus tard** : choix explicite du mode de paiement + pourboire au
-checkout (reliquat V2).
+**Reste possible plus tard** : bannière image sur `/start` ; `<blockquote expandable>`
+pour les longues descriptions ; choix explicite du mode de paiement + pourboire
+au checkout (reliquat V2).
 
 Une fois ce chantier jugé satisfaisant : reprise de `feuille-de-route.md`
 (Partie 4 configurateur, module marketing).
