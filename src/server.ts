@@ -16,6 +16,7 @@ import { driversRouter } from './api/drivers';
 import { featuresRouter } from './api/features';
 import { ordersRouter } from './api/orders';
 import { routesRouter } from './api/routes';
+import { shopRouter } from './api/shop';
 import { templatesRouter } from './api/templates';
 import { features } from './features';
 import { UPLOADS_DIR } from './uploads';
@@ -35,6 +36,7 @@ export function createServer(telegram: Telegram): express.Express {
   });
 
   app.use('/api/features', featuresRouter());
+  app.use('/api/shop', shopRouter(telegram)); // Mini App CLIENT
   app.use('/api/orders', ordersRouter(telegram));
   app.use('/api/catalog', catalogRouter());
   app.use('/api/customers', customersRouter());

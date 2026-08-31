@@ -10,6 +10,8 @@ import { upsertCustomer } from './customers';
 import { features } from './features';
 import { commitCheckout as commitReferral, previewCheckout as previewReferral } from './modules/referral';
 import { createOrder, getOrder, type Order } from './orders';
+import { initialStatusId, statusLabel } from './orderStages';
+import { esc } from './views';
 
 export interface CreateClientOrderInput {
   userId: number;
@@ -105,4 +107,28 @@ export function createClientOrder(input: CreateClientOrderInput): CreateClientOr
     parrainToNotify,
     removed: [],
   };
+}
+
+/**
+ * Texte HTML du message de confirmation envoye au client apres validation.
+ * Partage par la scene checkout du bot et l'endpoint `/api/shop/orders`.
+ */
+export function orderConfirmationText(opts: {
+  orderId: number;
+  total: number;
+  referralDiscount: number;
+  slotLabel?: string | null;
+}): string {
+  const detail = [
+    ...(opts.referralDiscount > 0
+      ? [`Payé : ${opts.total} € (−${opts.referralDiscount} € parrainage)`]
+      : []),
+    ...(features.deliverySlots.enabled && opts.slotLabel ? [`Créneau : ${opts.slotLabel}`] : []),
+  ];
+  return (
+    `✅ <b>Commande #${opts.orderId} — enregistrée</b>\n` +
+    `<i>${esc(statusLabel(initialStatusId()))}.</i>\n` +
+    (detail.length > 0 ? `${esc(detail.join('\n'))}\n` : '') +
+    "\nOn te prévient dès qu'elle est confirmée. Merci ! 🙏"
+  );
 }

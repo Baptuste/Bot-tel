@@ -25,8 +25,7 @@ import { cartTotal, getCart } from '../cart';
 import { notifyNewOrder } from '../orderFlow';
 import { loyaltyStatus } from '../modules/loyalty';
 import { previewCheckout as previewReferral } from '../modules/referral';
-import { createClientOrder } from '../order';
-import { initialStatusId, statusLabel } from '../orderStages';
+import { createClientOrder, orderConfirmationText } from '../order';
 import { userId, type BotContext, type CheckoutState } from '../context';
 import { getCustomer } from '../customers';
 import { getLastOrder } from '../orders';
@@ -465,17 +464,13 @@ confirmStep.action('order:confirm', async (ctx) => {
       .catch(() => undefined);
   }
 
-  const detail = [
-    ...(res.referralDiscount > 0
-      ? [`Payé : ${res.total} € (−${res.referralDiscount} € parrainage)`]
-      : []),
-    ...(features.deliverySlots.enabled ? [`Créneau : ${slotLabel ?? 'au plus tôt'}`] : []),
-  ];
   await ctx.editMessageText(
-    `✅ <b>Commande #${res.orderId} — enregistrée</b>\n` +
-      `<i>${esc(statusLabel(initialStatusId()))}.</i>\n` +
-      (detail.length > 0 ? `${esc(detail.join('\n'))}\n` : '') +
-      "\nOn te prévient dès qu'elle est confirmée. Merci ! 🙏",
+    orderConfirmationText({
+      orderId: res.orderId,
+      total: res.total,
+      referralDiscount: res.referralDiscount,
+      slotLabel: slotLabel ?? 'au plus tôt',
+    }),
     { parse_mode: 'HTML' },
   );
   await ctx.scene.leave();

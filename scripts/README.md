@@ -70,6 +70,18 @@ quand une commande atteint le rôle `fulfilled`, que le palier déclenche une
 notification client, et que `redeemReward` retire un palier du solde. In-process,
 base isolée `data/loyalty-test.db`.
 
+## `client.mts` — Mini App client (API `/api/shop/*`)
+
+```powershell
+npm run test:client
+```
+
+Simule Léa qui commande via l'API de la Mini App client : auth non-admin, menu,
+panier (ajout / ±/ retrait / réf. invalide), pré-remplissage, checkout (infos
+manquantes → 400, complet → 200), le bot envoie le reçu, historique. In-process
+(serveur HTTP sur un port libre, faux `telegram`), base isolée
+`data/client-test.db`.
+
 ## `referral.mts` — parrainage
 
 ```powershell

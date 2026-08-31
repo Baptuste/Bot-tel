@@ -17,6 +17,7 @@
     "test:creneaux": "tsx scripts/creneaux.mts",
     "test:loyalty": "tsx scripts/loyalty.mts",
     "test:referral": "tsx scripts/referral.mts",
+    "test:client": "tsx scripts/client.mts",
     "web:install": "npm --prefix web install",
     "web:dev": "npm --prefix web run dev",
     "tunnel": "cloudflared tunnel --url http://localhost:3000"

@@ -68,8 +68,16 @@ declare global {
   namespace Express {
     interface Request {
       adminUser?: TgUser;
+      /** Utilisateur Telegram authentifie (Mini App client) — pas forcement admin. */
+      tgUser?: TgUser;
     }
   }
+}
+
+/** Lit l'initData de l'en-tete `Authorization: tma <initData>` (ou `x-init-data`). */
+function readInitData(req: Parameters<RequestHandler>[0]): string {
+  const header = req.get('authorization') ?? '';
+  return header.startsWith('tma ') ? header.slice(4) : (req.get('x-init-data') ?? '');
 }
 
 /**
@@ -77,9 +85,7 @@ declare global {
  * Le front envoie l'initData dans l'en-tete `Authorization: tma <initData>`.
  */
 export const requireAdmin: RequestHandler = (req, res, next) => {
-  const header = req.get('authorization') ?? '';
-  const initData = header.startsWith('tma ') ? header.slice(4) : (req.get('x-init-data') ?? '');
-  const user = verifyInitData(initData);
+  const user = verifyInitData(readInitData(req));
 
   if (!user) {
     res.status(401).json({ error: 'invalid_init_data' });
@@ -91,5 +97,19 @@ export const requireAdmin: RequestHandler = (req, res, next) => {
   }
 
   req.adminUser = user;
+  next();
+};
+
+/**
+ * Middleware Mini App CLIENT : exige juste un initData valide (n'importe quel
+ * utilisateur Telegram). `req.tgUser` est rempli.
+ */
+export const requireUser: RequestHandler = (req, res, next) => {
+  const user = verifyInitData(readInitData(req));
+  if (!user) {
+    res.status(401).json({ error: 'invalid_init_data' });
+    return;
+  }
+  req.tgUser = user;
   next();
 };
