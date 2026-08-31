@@ -115,10 +115,17 @@ h1 {
   margin: var(--s-1) 0 var(--s-4);
 }
 
+/* En-tête de section : repris du vocabulaire « intercalaire de carnet ». */
 h2 {
-  font-size: var(--fs-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
   font-weight: 600;
-  margin: var(--s-4) 0 var(--s-2);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hint);
+  border-bottom: 1px dashed var(--line-strong);
+  padding-bottom: var(--s-1);
+  margin: var(--s-5) 0 var(--s-2);
 }
 
 .muted {
@@ -695,11 +702,18 @@ textarea {
 /* --- Catalogue : produits & variantes --- */
 .product {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
-  gap: var(--s-3);
+  gap: var(--s-2) var(--s-3);
   padding: var(--s-2) 0;
   border-top: 1px solid var(--line);
+}
+
+/* Colonne info : peut retrecir ; les actions passent dessous si ca ne tient pas. */
+.product > div:first-child {
+  flex: 1 1 58%;
+  min-width: 0;
 }
 
 .product.off,
@@ -723,12 +737,18 @@ textarea {
   display: flex;
   gap: var(--s-3);
   align-items: flex-start;
+  min-width: 0;
+}
+
+.product-info > div {
+  min-width: 0;
 }
 
 .product-actions {
   display: flex;
   gap: var(--s-1);
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .thumb {

@@ -7,7 +7,7 @@ interface Props {
   disabled?: boolean;
 }
 
-/** Liste deroulante de livreurs (actifs + celui deja affecte meme inactif). */
+/** Liste déroulante de livreurs (actifs + celui déjà affecté même inactif). */
 export function DriverSelect({ drivers, value, onChange, disabled }: Props) {
   const options = drivers.filter((d) => d.active || d.id === value);
 

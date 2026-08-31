@@ -89,7 +89,7 @@ export function Orders() {
         ))}
       </div>
 
-      {loading && <p className="muted">Chargement...</p>}
+      {loading && <p className="muted">Chargement…</p>}
       {!loading && !error && visible.length === 0 && <p className="muted">Aucune commande.</p>}
 
       {visible.map((o) => {
@@ -112,7 +112,7 @@ export function Orders() {
               <span>
                 {o.items.length} article{o.items.length > 1 ? 's' : ''}
               </span>
-              <span className="tk-total">{o.total} EUR</span>
+              <span className="tk-total">{o.total} €</span>
             </div>
             <div className="tk-sub muted small">
               🕒 {slotText(o.route)} · {o.address ?? 'retrait boutique'}

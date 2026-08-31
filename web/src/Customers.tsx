@@ -60,7 +60,7 @@ export function Customers() {
         style={{ marginBottom: 10 }}
       />
 
-      {loading && <p className="muted">Chargement...</p>}
+      {loading && <p className="muted">Chargement…</p>}
       {!loading && visible.length === 0 && <p className="muted">Aucun client.</p>}
 
       {visible.map((c) => {
@@ -69,9 +69,9 @@ export function Customers() {
           <div key={c.user_id} className="card clickable" onClick={() => setSelected(c.user_id)}>
             <div className="row">
               <strong>{c.name || (c.username ? `@${c.username}` : `#${c.user_id}`)}</strong>
-              {badge && <span className="badge cancelled">{badge}</span>}
+              {badge && <span className={`flag${c.blocked ? ' blocked' : ''}`}>{badge}</span>}
             </div>
-            <div className="muted">
+            <div className="muted small">
               {c.phone ?? '—'} · {c.total_orders} commande{c.total_orders > 1 ? 's' : ''}
             </div>
           </div>

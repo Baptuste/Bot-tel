@@ -32,7 +32,7 @@ export function App() {
   }
 
   if (error) return <div className="error">Chargement impossible : {error}</div>;
-  if (!features) return <p className="muted">Chargement...</p>;
+  if (!features) return <p className="muted">Chargement…</p>;
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'orders', label: 'Commandes' },

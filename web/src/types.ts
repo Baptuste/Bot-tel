@@ -235,9 +235,9 @@ export interface RouteTemplate {
 }
 
 export const ROUTE_STATUS_LABEL: Record<RouteStatus, string> = {
-  planned: 'Prevue',
+  planned: 'Prévue',
   started: 'En cours',
-  done: 'Terminee',
+  done: 'Terminée',
 };
 
 function localDate(offsetDays = 0): string {

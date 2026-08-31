@@ -120,7 +120,7 @@ export function OrderEdit({ order, onDone, onCancel }: Props) {
         {items.map((l, i) => (
           <div key={`${l.prodId}:${l.variantId ?? ''}`} className="product">
             <div>
-              {l.label} <span className="muted">- {l.price} EUR</span>
+              {l.label} <span className="muted">· {l.price} €</span>
             </div>
             <div className="product-actions">
               <button className="mini" disabled={busy} onClick={() => setQty(i, l.qty - 1)}>
@@ -138,7 +138,7 @@ export function OrderEdit({ order, onDone, onCancel }: Props) {
         ))}
         <div className="row total">
           <span>Total</span>
-          <span>{total} EUR</span>
+          <span>{total} €</span>
         </div>
 
         <div className="label" style={{ margin: '10px 0 4px' }}>

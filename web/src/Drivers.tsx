@@ -45,11 +45,11 @@ export function Drivers({ drivers, busy, onChange }: Props) {
       <div className="row">
         <strong>Livreurs</strong>
         <button className="link" onClick={() => setOpen((v) => !v)}>
-          {open ? 'Masquer' : `Gerer (${activeCount})`}
+          {open ? 'Masquer' : `Gérer (${activeCount})`}
         </button>
       </div>
       <p className="muted small">
-        Affecte un livreur a une tournee (ou par defaut sur un modele de creneau).
+        Affecte un livreur à une tournée (ou par défaut sur un modèle de créneau).
       </p>
 
       {open && (
@@ -58,7 +58,7 @@ export function Drivers({ drivers, busy, onChange }: Props) {
             <div key={d.id} className={`product ${d.active ? '' : 'off'}`}>
               <div>
                 {d.name}
-                {d.phone && <span className="muted small"> - {d.phone}</span>}
+                {d.phone && <span className="muted small"> · {d.phone}</span>}
               </div>
               <div className="product-actions">
                 <button
@@ -72,7 +72,7 @@ export function Drivers({ drivers, busy, onChange }: Props) {
                   className="mini danger"
                   disabled={disabled}
                   onClick={async () => {
-                    if (await confirmDialog(`Supprimer le livreur "${d.name}" ?`)) {
+                    if (await confirmDialog(`Supprimer le livreur « ${d.name} » ?`)) {
                       await run(() => api.drivers.remove(d.id));
                     }
                   }}
@@ -90,7 +90,7 @@ export function Drivers({ drivers, busy, onChange }: Props) {
               style={{ marginTop: 6 }}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="Telephone (optionnel)"
+              placeholder="Téléphone (optionnel)"
             />
             <button
               className="btn secondary"

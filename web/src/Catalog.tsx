@@ -64,7 +64,7 @@ export function Catalog() {
   }
 
   async function removeProduct(p: Product) {
-    if (await confirmDialog(`Supprimer "${p.name}" ?`)) {
+    if (await confirmDialog(`Supprimer « ${p.name} » ?`)) {
       await guard(() => api.catalog.deleteProduct(p.id));
     }
   }
@@ -73,8 +73,8 @@ export function Catalog() {
     const n = products.filter((p) => p.category_id === c.id).length;
     const msg =
       n > 0
-        ? `Supprimer "${c.label}" et ses ${n} produit(s) ?`
-        : `Supprimer la categorie "${c.label}" ?`;
+        ? `Supprimer « ${c.label} » et ses ${n} produit(s) ?`
+        : `Supprimer la catégorie « ${c.label} » ?`;
     if (await confirmDialog(msg)) {
       await guard(() => api.catalog.deleteCategory(c.id));
     }
@@ -104,7 +104,7 @@ export function Catalog() {
     <>
       <h1>Catalogue</h1>
       {error && <div className="error">{error}</div>}
-      {loading && <p className="muted">Chargement...</p>}
+      {loading && <p className="muted">Chargement…</p>}
 
       {categories.map((c) => {
         const items = products.filter((p) => p.category_id === c.id);
@@ -130,7 +130,7 @@ export function Catalog() {
                         <div>
                           {p.name}{' '}
                           <span className="muted">
-                            - {pVariants.length > 0 ? `des ${p.price}` : p.price} EUR
+                            — {pVariants.length > 0 ? `dès ${p.price}` : p.price} €
                           </span>
                         </div>
                         {p.description && <div className="muted small">{p.description}</div>}
@@ -180,7 +180,7 @@ export function Catalog() {
 
       <div className="card">
         <div className="label" style={{ marginBottom: 6 }}>
-          Nouvelle categorie
+          Nouvelle catégorie
         </div>
         <input
           value={newCategory}
@@ -193,7 +193,7 @@ export function Catalog() {
           disabled={busy || !newCategory.trim()}
           onClick={() => void addCategory()}
         >
-          Ajouter la categorie
+          Ajouter la catégorie
         </button>
       </div>
     </>

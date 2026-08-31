@@ -19,8 +19,8 @@ export function RouteTemplates({ templates, drivers, busy, onChange }: Props) {
   const withDrivers = deliverySlots.drivers;
   const capHint =
     deliverySlots.capacityLimit != null
-      ? `Capacite max (defaut : ${deliverySlots.capacityLimit})`
-      : 'Capacite max (optionnel)';
+      ? `Capacité max (défaut : ${deliverySlots.capacityLimit})`
+      : 'Capacité max (optionnel)';
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState('');
   const [time, setTime] = useState('');
@@ -44,7 +44,7 @@ export function RouteTemplates({ templates, drivers, busy, onChange }: Props) {
 
   async function add() {
     if (!label.trim() || !TIME_RE.test(time)) {
-      alertDialog('Libelle requis et heure au format HH:MM.');
+      alertDialog('Libellé requis et heure au format HH:MM.');
       return;
     }
     await run(() =>
@@ -66,13 +66,13 @@ export function RouteTemplates({ templates, drivers, busy, onChange }: Props) {
   return (
     <div className="card">
       <div className="row">
-        <strong>Modeles de creneaux</strong>
+        <strong>Modèles de créneaux</strong>
         <button className="link" onClick={() => setOpen((v) => !v)}>
-          {open ? 'Masquer' : 'Gerer'}
+          {open ? 'Masquer' : 'Gérer'}
         </button>
       </div>
       <p className="muted small">
-        Les tournees du jour sont generees automatiquement a partir des modeles actifs.
+        Les tournées du jour sont générées automatiquement à partir des modèles actifs.
       </p>
 
       {open && (
@@ -80,12 +80,12 @@ export function RouteTemplates({ templates, drivers, busy, onChange }: Props) {
           {templates.map((t) => (
             <div key={t.id} className={`product ${t.active ? '' : 'off'}`}>
               <div>
-                {t.label} <span className="muted">- {t.time}</span>
+                {t.label} <span className="muted">· {t.time}</span>
                 {t.max_capacity != null && (
-                  <span className="muted small"> - max {t.max_capacity}</span>
+                  <span className="muted small"> · max {t.max_capacity}</span>
                 )}
                 {withDrivers && driverName(t.driver_id) && (
-                  <span className="muted small"> - {driverName(t.driver_id)}</span>
+                  <span className="muted small"> · {driverName(t.driver_id)}</span>
                 )}
                 {withDrivers && (
                   <div style={{ marginTop: 4 }}>
@@ -114,7 +114,7 @@ export function RouteTemplates({ templates, drivers, busy, onChange }: Props) {
                   className="mini danger"
                   disabled={disabled}
                   onClick={async () => {
-                    if (await confirmDialog(`Supprimer le modele "${t.label}" ?`)) {
+                    if (await confirmDialog(`Supprimer le modèle « ${t.label} » ?`)) {
                       await run(() => api.routes.deleteTemplate(t.id));
                     }
                   }}
@@ -126,7 +126,7 @@ export function RouteTemplates({ templates, drivers, busy, onChange }: Props) {
           ))}
 
           <div style={{ marginTop: 10 }}>
-            <div className="label">Nouveau modele</div>
+            <div className="label">Nouveau modèle</div>
             <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Soir" />
             <input
               style={{ marginTop: 6 }}
@@ -153,7 +153,7 @@ export function RouteTemplates({ templates, drivers, busy, onChange }: Props) {
               disabled={disabled}
               onClick={() => void add()}
             >
-              Ajouter le modele
+              Ajouter le modèle
             </button>
           </div>
         </>

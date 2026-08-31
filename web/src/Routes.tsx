@@ -78,19 +78,23 @@ export function Routes() {
   }
 
   async function start(r: RouteWithOrders) {
-    if (await confirmDialog(`Demarrer la tournee (${r.orders.length} commande(s)) ?\nLes clients seront notifies.`)) {
+    if (
+      await confirmDialog(
+        `Démarrer la tournée (${r.orders.length} commande(s)) ?\nLes clients seront notifiés.`,
+      )
+    ) {
       await guard(() => api.routes.start(r.id));
     }
   }
 
   async function finish(r: RouteWithOrders) {
-    if (await confirmDialog('Terminer la tournee ? Les commandes en cours passent en "livree".')) {
+    if (await confirmDialog('Terminer la tournée ? Les commandes en cours passent en « livrée ».')) {
       await guard(() => api.routes.finish(r.id));
     }
   }
 
   async function remove(r: RouteWithOrders) {
-    if (await confirmDialog('Supprimer cette tournee ? Ses commandes redeviennent non affectees.')) {
+    if (await confirmDialog('Supprimer cette tournée ? Ses commandes redeviennent non affectées.')) {
       await guard(() => api.routes.remove(r.id));
     }
   }
@@ -102,23 +106,24 @@ export function Routes() {
 
   return (
     <>
-      <h1>Tournees</h1>
+      <h1>Tournées</h1>
       {error && <div className="error">{error}</div>}
-      {loading && <p className="muted">Chargement...</p>}
+      {loading && <p className="muted">Chargement…</p>}
 
+      <h2>Réglages</h2>
       {withDrivers && <Drivers drivers={drivers} busy={busy} onChange={load} />}
       <RouteTemplates templates={templates} drivers={drivers} busy={busy} onChange={load} />
 
       <div className="card">
         <div className="label" style={{ marginBottom: 6 }}>
-          Nouvelle tournee ponctuelle
+          Nouvelle tournée ponctuelle
         </div>
         <div className="field">
           <div className="label">Date</div>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div className="field">
-          <div className="label">Creneau</div>
+          <div className="label">Créneau</div>
           <input value={slot} onChange={(e) => setSlot(e.target.value)} placeholder="18:00-20:00" />
         </div>
         {withDrivers && (
@@ -133,9 +138,11 @@ export function Routes() {
           disabled={busy || !slot.trim()}
           onClick={() => void createRoute()}
         >
-          Creer la tournee
+          Créer la tournée
         </button>
       </div>
+
+      <h2>Tournées du jour</h2>
 
       {withDrivers && routes.length > 0 && (
         <div className="field">
@@ -155,13 +162,13 @@ export function Routes() {
         </div>
       )}
 
-      {routes.length === 0 && !loading && <p className="muted">Aucune tournee.</p>}
+      {routes.length === 0 && !loading && <p className="muted">Aucune tournée.</p>}
 
       {shownRoutes.map((r) => (
         <div key={r.id} className="card">
           <div className="row">
             <strong>
-              {r.date} - {r.time_slot}
+              {r.date} · {r.time_slot}
             </strong>
             <span className={`badge ${r.status}`}>{ROUTE_STATUS_LABEL[r.status]}</span>
           </div>
@@ -172,11 +179,11 @@ export function Routes() {
           </div>
           {withDrivers && (
             <div className="muted small" style={{ marginBottom: 6 }}>
-              Livreur : {r.driver?.name ?? 'non affecte'}
+              Livreur : {r.driver?.name ?? 'non affecté'}
             </div>
           )}
 
-          {r.orders.length === 0 && <p className="muted">Aucune commande affectee.</p>}
+          {r.orders.length === 0 && <p className="muted">Aucune commande affectée.</p>}
           {r.orders.map((o, i) => (
             <RouteOrderRow
               key={o.id}
@@ -194,7 +201,7 @@ export function Routes() {
             <>
               {withDrivers && (
                 <div className="field" style={{ marginTop: 10 }}>
-                  <div className="label">Livreur de cette tournee</div>
+                  <div className="label">Livreur de cette tournée</div>
                   <DriverSelect
                     drivers={drivers}
                     value={r.driver_id}
@@ -210,7 +217,7 @@ export function Routes() {
                   {assignable.map((o) => (
                     <div key={o.id} className="product">
                       <div>
-                        #{o.id} <span className="muted">- {flow.label(o.status)} - {o.total} EUR</span>
+                        #{o.id} <span className="muted">· {flow.label(o.status)} · {o.total} €</span>
                         <div className="muted small">{o.address ?? 'retrait boutique'}</div>
                       </div>
                       <button
@@ -230,7 +237,7 @@ export function Routes() {
                   disabled={busy || r.orders.length === 0}
                   onClick={() => void start(r)}
                 >
-                  Demarrer la tournee
+                  Démarrer la tournée
                 </button>
                 <button className="btn secondary" disabled={busy} onClick={() => void remove(r)}>
                   Supprimer
@@ -242,7 +249,7 @@ export function Routes() {
           {r.status === 'started' && (
             <div className="actions">
               <button className="btn" disabled={busy} onClick={() => void finish(r)}>
-                Terminer la tournee
+                Terminer la tournée
               </button>
             </div>
           )}

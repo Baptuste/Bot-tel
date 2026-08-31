@@ -40,7 +40,7 @@ export function ProductVariants({ productId, variants, busy, onChange }: Props) 
       {variants.map((v) => (
         <div key={v.id} className={`variant-row ${v.available ? '' : 'off'}`}>
           <span>
-            {v.label} <span className="muted">- {v.price} EUR</span>
+            {v.label} <span className="muted">· {v.price} €</span>
           </span>
           <span className="product-actions">
             <button

@@ -66,7 +66,7 @@ export function ProductForm({ product, onSave, onCancel }: Props) {
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Margherita" />
       </div>
       <div className="field">
-        <div className="label">Prix (EUR)</div>
+        <div className="label">Prix (€)</div>
         <input
           type="number"
           inputMode="numeric"
@@ -101,7 +101,7 @@ export function ProductForm({ product, onSave, onCancel }: Props) {
 
       <label className="checkbox">
         <input type="checkbox" checked={available} onChange={(e) => setAvailable(e.target.checked)} />
-        Disponible a la vente
+        Disponible à la vente
       </label>
 
       <div className="actions">

@@ -39,10 +39,10 @@ export function RouteOrderRow({ routeId, routeStatus, order: o, index, count, bu
       <div>
         <div>
           <span className="muted">{index + 1}.</span> #{o.id}{' '}
-          <span className="muted">- {o.username ? `@${o.username}` : o.user_id}</span>
+          <span className="muted">· {o.username ? `@${o.username}` : o.user_id}</span>
         </div>
         <div className="muted small">
-          {o.total} EUR - {flow.label(o.status)} - {o.address ?? 'retrait boutique'}
+          {o.total} € · {flow.label(o.status)} · {o.address ?? 'retrait boutique'}
         </div>
       </div>
 

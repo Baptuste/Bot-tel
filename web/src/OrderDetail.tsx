@@ -130,19 +130,19 @@ export function OrderDetail({ order, onBack, onChanged }: Props) {
             <li key={`${l.catId}:${l.prodId}:${l.variantId ?? ''}`}>
               <span className="it-name">{l.label}</span>
               <span className="it-qty">{l.qty} &times;</span>
-              <span>{l.price * l.qty} EUR</span>
+              <span>{l.price * l.qty} €</span>
             </li>
           ))}
         </ul>
         {(order.referral_discount ?? 0) > 0 && (
           <div className="row muted small">
             <span>Réduction parrainage</span>
-            <span>-{order.referral_discount} EUR</span>
+            <span>-{order.referral_discount} €</span>
           </div>
         )}
         <div className="row total">
           <span>Total</span>
-          <span>{order.total} EUR</span>
+          <span>{order.total} €</span>
         </div>
       </div>
 

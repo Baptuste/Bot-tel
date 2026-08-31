@@ -75,7 +75,7 @@ export function CustomerDetail({ userId, onBack }: Props) {
   }
 
   if (error) return <div className="error">{error}</div>;
-  if (!customer) return <p className="muted">Chargement...</p>;
+  if (!customer) return <p className="muted">Chargement…</p>;
 
   const rate =
     !reliability || reliability.rate === null ? '—' : `${Math.round(reliability.rate * 100)}%`;
@@ -87,7 +87,7 @@ export function CustomerDetail({ userId, onBack }: Props) {
       </button>
       <div className="row">
         <h1>{customer.name || (customer.username ? `@${customer.username}` : `#${customer.user_id}`)}</h1>
-        {customer.blocked && <span className="badge cancelled">bloqué</span>}
+        {customer.blocked && <span className="flag blocked">bloqué</span>}
       </div>
 
       <div className="card">
