@@ -34,7 +34,7 @@ import { getCustomer, upsertCustomer } from '../customers';
 import { createOrder, getLastOrder, getOrder } from '../orders';
 import { getAvailableSlots, hasUpcomingSlots, type Slot } from '../routes';
 import { features } from '../features';
-import { esc, letterhead, receiptBlock } from '../views';
+import { esc, receiptBlock } from '../views';
 
 export const CHECKOUT_SCENE_ID = 'checkout';
 
@@ -496,13 +496,16 @@ confirmStep.action('order:confirm', async (ctx) => {
     }
   }
 
+  const recapLines = [
+    `Statut : ${statusLabel(initialStatusId())}`,
+    ...(ref && ref.discount > 0
+      ? [`Réduction parrainage : −${ref.discount} € (payé ${total} €)`]
+      : []),
+    ...(features.deliverySlots.enabled ? [`Créneau : ${slotLabel ?? 'au plus tôt'}`] : []),
+  ];
   await ctx.editMessageText(
-    `${letterhead(`commande #${orderId}`, 'enregistrée ✓')}\n\n` +
-      (ref && ref.discount > 0
-        ? `Réduction parrainage : −${ref.discount} € (total ${total} €)\n`
-        : '') +
-      (features.deliverySlots.enabled ? `🕒 ${esc(slotLabel ?? 'au plus tôt')}\n` : '') +
-      `\nStatut : <i>${esc(statusLabel(initialStatusId()))}</i>.\n` +
+    `<b>✓ Commande #${orderId} enregistrée</b>\n\n` +
+      `<blockquote>${esc(recapLines.join('\n'))}</blockquote>\n` +
       "On te prévient dès qu'elle est confirmée. Merci ! 🙏",
     { parse_mode: 'HTML' },
   );

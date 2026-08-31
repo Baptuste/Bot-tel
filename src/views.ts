@@ -52,26 +52,12 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-const LH_W = 26; // largeur du contenu centre (boite = 30, aligne sur le ticket)
+/** Chemin de la banniere de la carte (envoyee sur /start). */
+export const MENU_BANNER = 'assets/menu-banner.png';
 
-/** Cartouche monospace centre — l'en-tete "papier" de la carte. */
-export function letterhead(title: string, subtitle?: string): string {
-  const center = (t: string): string => {
-    const chars = [...t];
-    const clipped = chars.length > LH_W ? chars.slice(0, LH_W).join('') : t;
-    const pad = LH_W - [...clipped].length;
-    const left = Math.floor(pad / 2);
-    return ' '.repeat(left) + clipped + ' '.repeat(pad - left);
-  };
-  const bar = '─'.repeat(LH_W);
-  const rows = [`│ ${esc(center(title.toUpperCase()))} │`];
-  if (subtitle) rows.push(`│ ${esc(center(subtitle))} │`);
-  return `<pre>╭─${bar}─╮\n${rows.join('\n')}\n╰─${bar}─╯</pre>`;
-}
-
-/** En-tete de section (ecrans secondaires) : titre gras + filet. */
+/** En-tete de section : titre en gras. Le decor vient des blockquotes autour. */
 export function section(title: string): string {
-  return `<b>${esc(title)}</b>\n━━━━━━━━━━━━━━━━━━`;
+  return `<b>${esc(title)}</b>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -110,7 +96,12 @@ export function receiptBlock(
 // Vues
 // ---------------------------------------------------------------------------
 
-/** Ecran d'accueil : cartouche + grille de categories. */
+export const TAGLINE =
+  features.fulfillment === 'pickup'
+    ? 'Commande en ligne · retrait en boutique'
+    : 'Commande en ligne · livraison & retrait';
+
+/** Ecran d'accueil : identite + grille de categories. */
 export function categoriesView(): View {
   const menu = getMenu();
   const catButtons = Object.entries(menu).map(([catId, cat]) =>
@@ -119,11 +110,14 @@ export function categoriesView(): View {
 
   const body =
     catButtons.length > 0
-      ? 'Bonjour 👋\nChoisis une catégorie pour composer ta commande.'
+      ? 'Choisis une catégorie pour composer ta commande 👇'
       : 'La carte est momentanément vide — reviens un peu plus tard.';
 
   return {
-    text: `${letterhead(features.displayName, 'commande en ligne')}\n\n${body}`,
+    text:
+      `<b>${esc(features.displayName)}</b>\n` +
+      `<blockquote>${esc(TAGLINE)}</blockquote>\n` +
+      body,
     keyboard: Markup.inlineKeyboard([
       ...chunk(catButtons, 2),
       [Markup.button.callback('🛒 Mon panier', CB.showCart())],

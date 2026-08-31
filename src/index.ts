@@ -7,6 +7,8 @@
  * Mini App admin : servie par src/server.ts (auth initData), ouverte via un bouton.
  */
 import 'dotenv/config'; // AVANT './db' et './features' : CLIENT_ID / DB_PATH lus a l'import
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { Markup, Scenes, Telegraf, session } from 'telegraf';
 import './db'; // ouvre la base + cree les tables au demarrage
 import { registerAdmin } from './admin';
@@ -33,8 +35,10 @@ import {
   categoryView,
   esc,
   isPhotoView,
+  MENU_BANNER,
   productView,
   section,
+  TAGLINE,
   type AnyView,
 } from './views';
 
@@ -90,9 +94,23 @@ async function render(ctx: BotContext, view: AnyView): Promise<void> {
 }
 
 bot.start(async (ctx) => {
-  // removeKeyboard : nettoie un eventuel clavier personnalise laisse par une ancienne
-  // version. Message court et separe (le nom de la boutique arrive avec le menu).
-  await ctx.reply('👋 Bienvenue !', Markup.removeKeyboard());
+  // Banniere de la carte -> premiere impression. Porte aussi le removeKeyboard
+  // (nettoie un eventuel clavier personnalise laisse par une ancienne version).
+  const banner = path.resolve(process.cwd(), MENU_BANNER);
+  if (existsSync(banner)) {
+    await ctx
+      .replyWithPhoto(
+        { source: banner },
+        {
+          caption: `<b>${esc(features.displayName)}</b>\n<i>${esc(TAGLINE)}</i>`,
+          parse_mode: 'HTML',
+          ...Markup.removeKeyboard(),
+        },
+      )
+      .catch(() => ctx.reply(`👋 Bienvenue chez ${features.displayName} !`, Markup.removeKeyboard()));
+  } else {
+    await ctx.reply(`👋 Bienvenue chez ${features.displayName} !`, Markup.removeKeyboard());
+  }
   await render(ctx, categoriesView());
 });
 
