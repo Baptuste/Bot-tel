@@ -13,7 +13,7 @@ import { getCustomer } from '../customers';
 import { features } from '../features';
 import { notifyNewOrder, safeSend } from '../orderFlow';
 import { createClientOrder, orderConfirmationText } from '../order';
-import { getLastOrder, getOrdersByUser } from '../orders';
+import { getLastOrder, getOrder, getOrdersByUser } from '../orders';
 import { statusLabel } from '../orderStages';
 import { getAvailableSlots, getRoute } from '../routes';
 import { requireUser } from './auth';
@@ -96,6 +96,32 @@ export function shopRouter(telegram: Telegram): Router {
   router.delete('/cart', (req, res) => {
     clearCart(uid(req));
     res.json(cartDto(uid(req)));
+  });
+
+  // --- Recommander : re-remplit le panier depuis une commande passee ---
+  router.post('/cart/reorder', (req, res) => {
+    const orderId = Number(req.body?.orderId);
+    const order = Number.isFinite(orderId) ? getOrder(orderId) : null;
+    if (!order || order.user_id !== uid(req)) {
+      res.status(404).json({ error: 'commande_introuvable' });
+      return;
+    }
+    const menu = getMenu();
+    const skipped: string[] = [];
+    for (const l of order.items) {
+      const item = menu[l.catId]?.items[l.prodId];
+      const okRef =
+        item &&
+        (l.variantId
+          ? item.variants.some((v) => v.id === l.variantId)
+          : item.variants.length === 0);
+      if (!okRef) {
+        skipped.push(l.label);
+        continue;
+      }
+      addToCart(uid(req), { catId: l.catId, prodId: l.prodId, variantId: l.variantId || undefined }, l.qty);
+    }
+    res.json({ ...cartDto(uid(req)), skipped });
   });
 
   // --- Creneaux (livraison) ---

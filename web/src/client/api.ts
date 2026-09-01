@@ -13,6 +13,11 @@ export const shop = {
   setLineQty: (key: string, qty: number) =>
     request<CartDto>('/shop/cart', { method: 'PATCH', body: JSON.stringify({ key, qty }) }),
   clearCart: () => request<CartDto>('/shop/cart', { method: 'DELETE' }),
+  reorder: (orderId: number) =>
+    request<CartDto & { skipped: string[] }>('/shop/cart/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ orderId }),
+    }),
 
   slots: () => request<{ slots: Slot[] }>('/shop/slots'),
   lastOrder: () =>

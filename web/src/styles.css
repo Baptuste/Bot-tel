@@ -1205,6 +1205,82 @@ textarea {
   margin-top: var(--s-2);
 }
 
+/* --- Historique client --- */
+.ordlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.ordcard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--s-3);
+}
+.ordcard__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-2);
+}
+.ordcard__id {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+}
+.ordcard__status {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.ordcard__status.is-live {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--accent);
+}
+.ordcard__status.is-done {
+  background: color-mix(in srgb, var(--hint) 18%, var(--surface));
+  color: var(--hint);
+}
+.ordcard__items {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+.ordcard__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.ordcard__date {
+  font-size: var(--fs-xs);
+  color: var(--hint);
+}
+.ordcard__total {
+  font-weight: 600;
+}
+.ordcard__again {
+  align-self: flex-start;
+  margin-top: var(--s-1);
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
 .template-edit-actions {
   display: flex;
   gap: var(--s-1);

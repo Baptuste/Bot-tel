@@ -8,6 +8,7 @@ import { Cart } from './Cart';
 import { Catalog } from './Catalog';
 import { Checkout } from './Checkout';
 import { OrderSent } from './OrderSent';
+import { Orders } from './Orders';
 import { Product } from './Product';
 import { alertDialog, haptic } from '../telegram';
 import type { CartDto, Menu, ShopConfig } from './types';
@@ -71,6 +72,22 @@ export function ClientApp() {
     (key: string, qty: number) => void run(() => shop.setLineQty(key, qty)),
     [run],
   );
+
+  const onReorder = useCallback((orderId: number) => {
+    setBusy(true);
+    shop
+      .reorder(orderId)
+      .then((r) => {
+        setCart({ lines: r.lines, total: r.total, count: r.count });
+        haptic('success');
+        if (r.skipped.length > 0) {
+          alertDialog(`Plus au menu, non repris : ${r.skipped.join(', ')}.`);
+        }
+        setScreen({ name: 'cart' });
+      })
+      .catch((e) => alertDialog(e instanceof Error ? e.message : 'Erreur'))
+      .finally(() => setBusy(false));
+  }, []);
 
   const onItemsChanged = useCallback(
     (removed: string[]) => {
@@ -147,15 +164,7 @@ export function ClientApp() {
   }
 
   if (screen.name === 'orders') {
-    return (
-      <div className="shop">
-        <h1 className="shop-title">Mes commandes</h1>
-        <p className="empty">Historique — étape suivante du chantier.</p>
-        <button className="linkback" onClick={() => setScreen({ name: 'catalog' })}>
-          ← La carte
-        </button>
-      </div>
-    );
+    return <Orders onReorder={onReorder} onBack={() => setScreen({ name: 'catalog' })} />;
   }
 
   return (

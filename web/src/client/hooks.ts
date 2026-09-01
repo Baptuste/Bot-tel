@@ -22,6 +22,13 @@ export function useMainButton(opts: {
   }, [text, onClick, visible, loading]);
 }
 
+/** Masque le bouton principal pour un écran qui n'en a pas (historique…). */
+export function useNoMainButton(): void {
+  useEffect(() => {
+    tg?.MainButton?.hide();
+  }, []);
+}
+
 /** Bouton retour natif ; `null` pour le masquer (écran racine). */
 export function useBackButton(onBack: (() => void) | null): void {
   useEffect(() => {

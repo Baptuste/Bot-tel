@@ -125,12 +125,14 @@ if (b) {
 }
 
 // --- 6. checkout complet ---
+let lastOrderId = 0;
 {
   const r = await api('POST', '/api/shop/orders', {
     address: '12 rue Jean Moulin, Cabries',
     phone: '06 12 34 56 78',
   });
   check('commande creee -> orderId', r.status === 200 && typeof r.json.orderId === 'number');
+  lastOrderId = r.json.orderId;
   check('panier vide apres commande', (await api('GET', '/api/shop/cart')).json.count === 0);
   check(
     'le "bot" a envoye le recu au client',
@@ -142,8 +144,21 @@ if (b) {
 {
   const r = await api('GET', '/api/shop/orders');
   check('historique : 1 commande', r.json.orders.length === 1 && r.json.orders[0]!.statusLabel);
+  check('historique : items detaille', Array.isArray(r.json.orders[0]!.items) && r.json.orders[0]!.items.length > 0);
   const last = await api('GET', '/api/shop/last-order');
   check('last-order pre-rempli apres commande', last.json.phone === '06 12 34 56 78');
+}
+
+// --- 8. recommander ---
+{
+  const bad = await api('POST', '/api/shop/cart/reorder', { orderId: 999999 });
+  check('reorder commande inconnue -> 404', bad.status === 404);
+  const r = await api('POST', '/api/shop/cart/reorder', { orderId: lastOrderId });
+  check(
+    'reorder -> panier re-rempli depuis la commande',
+    r.status === 200 && r.json.count > 0 && Array.isArray(r.json.skipped),
+  );
+  await api('DELETE', '/api/shop/cart');
 }
 
 listener.close();
