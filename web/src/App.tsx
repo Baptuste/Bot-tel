@@ -8,6 +8,8 @@ import type { ClientFeatures } from './types';
 /**
  * Routeur : une seule Mini App, deux visages.
  * `GET /api/features` répond 200 pour un admin, 403 (`not_admin`) sinon.
+ * `?view=client` dans l'URL (bouton « Ouvrir la boutique » du bot) force la
+ * vitrine, même pour un admin — pour prévisualiser depuis son propre compte.
  */
 type State =
   | { mode: 'no-tg' }
@@ -16,11 +18,15 @@ type State =
   | { mode: 'client' }
   | { mode: 'error'; message: string };
 
+const forceClient = new URLSearchParams(window.location.search).get('view') === 'client';
+
 export function App() {
-  const [state, setState] = useState<State>(initData ? { mode: 'loading' } : { mode: 'no-tg' });
+  const [state, setState] = useState<State>(
+    !initData ? { mode: 'no-tg' } : forceClient ? { mode: 'client' } : { mode: 'loading' },
+  );
 
   useEffect(() => {
-    if (!initData) return;
+    if (!initData || forceClient) return;
     void api
       .features()
       .then((features) => setState({ mode: 'admin', features }))

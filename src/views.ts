@@ -21,12 +21,30 @@ import { imagePath } from './uploads';
 type InlineKeyboard = ReturnType<typeof Markup.inlineKeyboard>;
 
 /**
+ * URL de la Mini App forcee en vue CLIENT (`?view=client`) : le routeur
+ * `web/src/App.tsx` ouvre alors la vitrine meme pour un admin. Le bouton "menu"
+ * de la conversation (setChatMenuButton) reste, lui, sur l'admin.
+ * `null` si aucune URL publique n'est configuree.
+ */
+function shopUrl(): string | null {
+  if (!config.webAppUrl) return null;
+  try {
+    const u = new URL(config.webAppUrl);
+    u.searchParams.set('view', 'client');
+    return u.toString();
+  } catch {
+    return config.webAppUrl;
+  }
+}
+
+/**
  * Bouton d'ouverture de la Mini App client (vitrine : photos, panier partage
- * avec ce bot). `null` si aucune URL publique n'est configuree — le bot reste
- * alors un parcours 100 % texte.
+ * avec ce bot). Tableau vide si aucune URL publique — le bot reste alors un
+ * parcours 100 % texte.
  */
 function shopButtonRow(label: string): ReturnType<typeof Markup.button.webApp>[][] {
-  return config.webAppUrl ? [[Markup.button.webApp(label, config.webAppUrl)]] : [];
+  const url = shopUrl();
+  return url ? [[Markup.button.webApp(label, url)]] : [];
 }
 
 export interface View {
