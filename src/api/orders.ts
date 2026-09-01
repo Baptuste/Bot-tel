@@ -128,6 +128,8 @@ export function ordersRouter(telegram: Telegram): Router {
         telegram,
         updated.user_id,
         `✏️ Ta commande #${updated.id} a été mise à jour. Nouveau total : ${updated.total} €.`,
+        undefined,
+        { alertAdmins: true, context: `commande #${updated.id} · modification` },
       );
     }
     res.json({ order: updated ? toDto(updated) : null });

@@ -23,21 +23,52 @@ import {
   type OrderStatus,
 } from './orders';
 
-/** Envoie un message, en tolerant les cas normaux (client a bloque le bot / compte supprime). */
+const escHtml = (s: string): string =>
+  s.replace(/[<>&]/g, (c) => (c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&amp;'));
+
+/** Previent les admins, en direct, sans jamais relancer d'exception. */
+async function alertAdmins(telegram: Telegram, html: string): Promise<void> {
+  for (const adminId of config.adminIds) {
+    try {
+      await telegram.sendMessage(adminId, html, { parse_mode: 'HTML' });
+    } catch {
+      /* si l'admin lui-meme est injoignable, on ne peut rien faire */
+    }
+  }
+}
+
+/**
+ * Envoie un message, en tolerant les cas normaux (client a bloque le bot / compte
+ * supprime). Avec `opts.alertAdmins`, un echec d'envoi *a un client* remonte a
+ * l'admin dans le chat — indispensable en production : sans ca, un client qui ne
+ * recoit plus ses notifs passe totalement inapercu.
+ */
 export async function safeSend(
   telegram: Telegram,
   chatId: number,
   text: string,
   extra?: Parameters<Telegram['sendMessage']>[2],
+  opts?: { alertAdmins?: boolean; context?: string },
 ): Promise<void> {
   try {
     await telegram.sendMessage(chatId, text, extra);
   } catch (err) {
     const description = (err as { description?: string }).description ?? String(err);
-    if (/chat not found|bot was blocked|user is deactivated/i.test(description)) {
+    const blocked = /chat not found|bot was blocked|user is deactivated/i.test(description);
+    if (blocked) {
       console.warn(`[flow] client ${chatId} injoignable (${description}).`);
     } else {
       console.error(`[flow] envoi au client ${chatId} echoue :`, err);
+    }
+    if (opts?.alertAdmins && config.adminIds.length > 0) {
+      const preview = text.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 180);
+      void alertAdmins(
+        telegram,
+        '⚠️ <b>Notification client non délivrée</b>\n' +
+          `Client <code>${chatId}</code>${opts.context ? ` · ${escHtml(opts.context)}` : ''}\n` +
+          `<i>${escHtml(blocked ? 'a bloqué le bot ou compte supprimé' : description)}</i>\n\n` +
+          `Message concerné : « ${escHtml(preview)} »`,
+      );
     }
   }
 }
@@ -155,9 +186,13 @@ export async function changeStatus(
   const updated = updateOrderStatus(orderId, to, meta);
   if (updated) {
     // clientMsg est du HTML (gabarit de notification, cf. features.ts).
-    await safeSend(telegram, updated.user_id, transition.clientMsg(updated), {
-      parse_mode: 'HTML',
-    });
+    await safeSend(
+      telegram,
+      updated.user_id,
+      transition.clientMsg(updated),
+      { parse_mode: 'HTML' },
+      { alertAdmins: true, context: `commande #${updated.id} · ${statusLabel(to)}` },
+    );
     if (features.loyalty.enabled && stageById(to)?.role === 'fulfilled') {
       await awardLoyalty(telegram, updated);
     }
@@ -176,6 +211,7 @@ async function awardLoyalty(telegram: Telegram, order: Order): Promise<void> {
       `🎉 <b>+${status.points} points de fidélité</b>\nTu as débloqué : ${reward}. ` +
         'Signale-le à ta prochaine commande.',
       { parse_mode: 'HTML' },
+      { alertAdmins: true, context: `commande #${order.id} · fidélité` },
     );
   }
 }

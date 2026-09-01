@@ -46,8 +46,10 @@ const { createServer } = await import('../src/server.ts');
 seedCatalogIfEmpty();
 
 const sent: { chatId: number | string; text: string }[] = [];
+let failChatId = 0; // != 0 -> le faux Telegram rejette les envois vers ce chat
 const telegram = {
   sendMessage: async (chatId: number | string, text: string) => {
+    if (chatId === failChatId) throw { description: 'Forbidden: bot was blocked by the user' };
     sent.push({ chatId, text });
     return {};
   },
@@ -159,6 +161,20 @@ let lastOrderId = 0;
     r.status === 200 && r.json.count > 0 && Array.isArray(r.json.skipped),
   );
   await api('DELETE', '/api/shop/cart');
+}
+
+// --- 9. le "bot" alerte l'admin si le recu client ne part pas ---
+{
+  const { config } = await import('../src/config.ts');
+  const adminId = config.adminIds[0]!;
+  failChatId = CLIENT_ID; // le client a "bloque le bot"
+  await api('POST', '/api/shop/cart', { catId: a.catId, prodId: a.prodId, qty: 1 });
+  await api('POST', '/api/shop/orders', { address: '1 rue Test', phone: '06 00 00 00 00' });
+  failChatId = 0;
+  check(
+    "notif client echouee -> l'admin est prevenu dans le chat",
+    sent.some((m) => m.chatId === adminId && /non délivrée/.test(m.text)),
+  );
 }
 
 listener.close();

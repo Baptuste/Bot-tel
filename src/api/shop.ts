@@ -187,12 +187,15 @@ export function shopRouter(telegram: Telegram): Router {
         slotLabel: route ? `${route.time_slot} (${route.date})` : 'au plus tôt',
       }),
       { parse_mode: 'HTML' },
+      { alertAdmins: true, context: `commande #${result.orderId} · reçu` },
     );
     if (result.parrainToNotify) {
       await safeSend(
         telegram,
         result.parrainToNotify.userId,
         `🎁 Ton filleul vient de passer sa première commande ! ${result.parrainToNotify.reward} € pour toi sur ta prochaine commande.`,
+        undefined,
+        { alertAdmins: true, context: 'récompense parrainage' },
       );
     }
     await notifyNewOrder(telegram, result.order);

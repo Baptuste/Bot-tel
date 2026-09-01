@@ -303,7 +303,10 @@ export async function startRoute(telegram: Telegram, id: number): Promise<RouteW
     if (order.status === acceptedId) {
       await changeStatus(telegram, order.id, fulfillingId);
       if (driver) {
-        await safeSend(telegram, order.user_id, `🛵 Ton livreur : ${driver.name}.`);
+        await safeSend(telegram, order.user_id, `🛵 Ton livreur : ${driver.name}.`, undefined, {
+          alertAdmins: true,
+          context: `commande #${order.id} · livreur`,
+        });
       }
     }
   }
@@ -343,9 +346,13 @@ export async function notifyRouteProgress(telegram: Telegram, routeId: number): 
         : i === 1
           ? "plus qu'un arrêt avant toi."
           : 'encore 2 arrêts avant toi.';
-    await safeSend(telegram, o.user_id, `🛵 <b>Commande #${o.id}</b> — ${tail}`, {
-      parse_mode: 'HTML',
-    });
+    await safeSend(
+      telegram,
+      o.user_id,
+      `🛵 <b>Commande #${o.id}</b> — ${tail}`,
+      { parse_mode: 'HTML' },
+      { alertAdmins: true, context: `commande #${o.id} · suivi tournée` },
+    );
   }
 }
 

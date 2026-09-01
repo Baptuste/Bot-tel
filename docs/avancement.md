@@ -159,6 +159,10 @@ publique. Suppression d'un produit / d'une catégorie → les fichiers image son
 9. **Images produits** — `src/uploads.ts`, `products.image`, `PhotoView` / `AnyView`, `render()` gère texte + photo (delete/resend dès qu'une photo est impliquée).
 10. **Sessions persistées** — table `sessions`, `src/sessionStore.ts` (store SQLite pour telegraf), 3 mécanismes de nettoyage, purge branchée au planificateur.
 11. **Clients + fiabilité** — table `customers` (`src/customers.ts`), `upsertCustomer` au checkout, taux de fiabilité **calculé** depuis `orders`, annulation avec raison + flag no-show, onglet Clients dans la Mini App, alerte client bloqué / à risque sur les commandes. `safeSend()` : "client injoignable" devient un warn, plus un stack trace.
+*(2026-09-01 : `safeSend(..., { alertAdmins: true, context })` — un échec d'envoi
+à un client remonte à l'admin dans le chat « ⚠️ Notification client non délivrée » ;
+posé sur toutes les notifs client — statut, reçu, tournée, fidélité, parrainage,
+modification. `test:client` : 19.)*
 12. **Checkout V2** — modification du panier ligne par ligne (`setLineQty` / `removeLine`), étape « précision de livraison » (étage/code, pré-remplie depuis la fiche client), `reconcileCart()` à la validation (produit indispo / prix changé → signalé, retour au récap). `reloadMenu()` : la validation d'une commande relit toujours le menu frais.
 13. **Suivi de tournée en direct** — extraction de `src/orderFlow.ts` (transitions + notifs, hors UI) pour casser le cycle admin ↔ routes. `orders.route_position` + réordonnancement (`moveOrder`). Pendant une tournée : **📦 Livrée** par commande → `markDelivered()` (livre + `notifyRouteProgress()` prévient les 3 clients suivants de leur position) ; **❌ Souci** → annulation + raison + no-show. Nouvelle transition `delivering → cancelled`.
 14. **Tableau de bord + alertes** — `src/dashboard.ts` (`getDashboard`), `orders.updated_at` / `delivered_at` (posés dans `updateOrderStatus`). Carte tableau de bord en tête de l'onglet Commandes. Le planificateur alerte l'admin des commandes en attente depuis +20 min (`orders.alerted`, une fois).
