@@ -14,10 +14,20 @@ import { Markup } from 'telegraf';
 import { CB } from './callbacks';
 import { cartTotal, getCart, lineKey } from './cart';
 import { getMenu } from './catalog';
+import { config } from './config';
 import { features } from './features';
 import { imagePath } from './uploads';
 
 type InlineKeyboard = ReturnType<typeof Markup.inlineKeyboard>;
+
+/**
+ * Bouton d'ouverture de la Mini App client (vitrine : photos, panier partage
+ * avec ce bot). `null` si aucune URL publique n'est configuree — le bot reste
+ * alors un parcours 100 % texte.
+ */
+function shopButtonRow(label: string): ReturnType<typeof Markup.button.webApp>[][] {
+  return config.webAppUrl ? [[Markup.button.webApp(label, config.webAppUrl)]] : [];
+}
 
 export interface View {
   text: string;
@@ -113,6 +123,7 @@ export function categoriesView(): View {
   return {
     text: `<b>${esc(features.displayName)}</b>\n<i>${esc(TAGLINE)}</i>\n\n${body}`,
     keyboard: Markup.inlineKeyboard([
+      ...shopButtonRow('🛍️ Ouvrir la boutique'),
       ...chunk(catButtons, 2),
       [Markup.button.callback('🛒 Mon panier', CB.showCart())],
     ]),
@@ -200,6 +211,7 @@ export function cartView(userId: number): View {
         `${section('Ton panier')}\n\n` +
         "Il est vide pour l'instant.\nParcours la carte pour ajouter des articles.",
       keyboard: Markup.inlineKeyboard([
+        ...shopButtonRow('🛍️ Ouvrir la boutique'),
         [Markup.button.callback('⬅️ Retour à la carte', CB.home())],
       ]),
     };
@@ -219,6 +231,7 @@ export function cartView(userId: number): View {
     text: `${section('Ton panier')}\n\n${receiptBlock(lines, cartTotal(userId))}`,
     keyboard: Markup.inlineKeyboard([
       ...lineRows,
+      ...shopButtonRow('🛍️ Finaliser dans la boutique'),
       [Markup.button.callback('✅ Valider la commande', CB.startCheckout())],
       [
         Markup.button.callback('🗑 Vider', CB.clearCart()),

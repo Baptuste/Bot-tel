@@ -94,8 +94,8 @@ async function render(ctx: BotContext, view: AnyView): Promise<void> {
 
 bot.start(async (ctx) => {
   // Accueil sobre : nom + tagline, removeKeyboard (nettoie un ancien clavier
-  // personnalise), puis la carte. (Le bouton "Ouvrir la carte" -> Mini App
-  // client arrivera quand celle-ci existera.)
+  // personnalise), puis la carte. Le bouton "🛍️ Ouvrir la boutique" (Mini App
+  // client) est porte par categoriesView() quand WEBAPP_URL est configuree.
   await ctx.reply(`<b>${esc(features.displayName)}</b>\n<i>${esc(TAGLINE)}</i>`, {
     parse_mode: 'HTML',
     ...Markup.removeKeyboard(),
