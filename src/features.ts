@@ -143,6 +143,12 @@ export interface ClientFeatures {
   clientId: string;
   displayName: string;
 
+  /**
+   * Coordonnées de la boutique, montrées au client via `/contact` et le bouton
+   * « Nous contacter ». Chaque champ vide est simplement omis.
+   */
+  contact: { phone?: string; address?: string; hours?: string; note?: string };
+
   /** Mode(s) de remise de la commande. */
   fulfillment: 'delivery' | 'pickup' | 'both';
 
@@ -204,6 +210,9 @@ const pizzeria: ClientFeatures = {
   clientId: 'pizzeria-test',
   displayName: 'Pizzeria Test',
 
+  // À renseigner avant la mise en service (téléphone au minimum).
+  contact: { phone: '', address: '', hours: '' },
+
   fulfillment: 'delivery',
   requiresAddress: true,
   requiresPhone: true,
@@ -227,6 +236,12 @@ const pizzeria: ClientFeatures = {
 const boutiqueDemo: ClientFeatures = {
   clientId: 'boutique-demo',
   displayName: 'Boutique Démo',
+
+  contact: {
+    phone: '01 23 45 67 89',
+    address: '12 rue de la Paix, Lyon',
+    hours: 'Mar–Sam 10h–19h',
+  },
 
   fulfillment: 'pickup',
   requiresAddress: false,

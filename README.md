@@ -27,7 +27,9 @@ Ce README couvre l'architecture et l'installation.
   vide. Adresse / numero / precision de la derniere commande proposes en un clic.
   A la validation, les produits devenus indisponibles / re-tarifes sont signales
   avant de confirmer ;
-- `/mes_commandes` : historique client (lecture simple) ;
+- `/mes_commandes` : historique client (lecture simple) ; `/contact` : coordonnees
+  de la boutique (`features.contact` : tel, adresse, horaires) — aussi en bouton
+  « ☎️ Nous contacter » sur l'accueil et en pied de la Mini App client ;
 - **Mini App client** (vitrine) : bouton inline « 🛍️ Ouvrir la boutique » →
   catalogue photos, panier **partagé avec le bot** (table `cart`), checkout complet,
   historique + « recommander ». Le parcours texte du bot reste comme repli. Voir
@@ -113,7 +115,7 @@ se greffe sans reecrire l'existant.
 
 | Fichier | Role |
 |---|---|
-| `src/features.ts` | **Config metier** du client actif (registre + `CLIENT_ID`). Pilote les etapes du checkout, les tables creees, les onglets de la Mini App. Seul fichier a toucher pour un nouveau metier. |
+| `src/features.ts` | **Config metier** du client actif (registre + `CLIENT_ID`). Pilote les etapes du checkout, les tables creees, les onglets de la Mini App. `displayName` + `contact` (tel/adresse/horaires) = identite de la boutique. Seul fichier a toucher pour un nouveau metier. |
 | `menu.json` (racine) | **Contenu initial** du catalogue : seme la base au 1er demarrage, plus utilise ensuite. |
 | `data/bot.db` | Base SQLite locale (ignoree par git). Cree automatiquement au 1er lancement. |
 | `src/catalog.ts` | Catalogue en base : `getMenu()` (menu filtre pour le bot) + CRUD (Mini App). |

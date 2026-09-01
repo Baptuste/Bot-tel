@@ -31,6 +31,7 @@ import {
   cartView,
   categoriesView,
   categoryView,
+  contactView,
   esc,
   isPhotoView,
   productView,
@@ -107,11 +108,16 @@ bot.command('panier', async (ctx) => {
   await render(ctx, cartView(userId(ctx)));
 });
 
+bot.command('contact', async (ctx) => {
+  await render(ctx, contactView());
+});
+
 bot.help(async (ctx) => {
   const lines = [
     '<code>/start</code> — afficher la carte',
     '<code>/panier</code> — voir mon panier',
     '<code>/mes_commandes</code> — mon historique de commandes',
+    '<code>/contact</code> — joindre la boutique',
   ];
   if (features.loyalty.enabled) lines.push('<code>/fidelite</code> — mes points de fidélité');
   if (features.referral.enabled) lines.push('<code>/parrainage</code> — mon code de parrainage');
@@ -208,6 +214,10 @@ bot.action(CALLBACK_PATTERN, async (ctx) => {
   switch (parsed.kind) {
     case 'home':
       await render(ctx, categoriesView());
+      return;
+
+    case 'contact':
+      await render(ctx, contactView());
       return;
 
     case 'category': {
@@ -313,6 +323,7 @@ async function publishCommands(): Promise<void> {
     { command: 'start', description: 'Afficher le menu' },
     { command: 'panier', description: 'Voir mon panier' },
     { command: 'mes_commandes', description: 'Mon historique de commandes' },
+    { command: 'contact', description: 'Joindre la boutique' },
     ...(features.loyalty.enabled
       ? [{ command: 'fidelite', description: 'Mes points de fidelite' }]
       : []),

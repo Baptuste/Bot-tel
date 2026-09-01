@@ -11,6 +11,7 @@
 /** Fabriques de callback_data (utilisees pour construire les boutons). */
 export const CB = {
   home: () => 'nav:home',
+  contact: () => 'nav:contact',
   category: (catId: string) => `nav:cat:${catId}`,
   product: (catId: string, prodId: string) => `nav:prod:${catId}:${prodId}`,
   addToCart: (catId: string, prodId: string) => `cart:add:${catId}:${prodId}`,
@@ -30,6 +31,7 @@ export const CALLBACK_PATTERN = /^(nav|cart|order):/;
 /** Resultat du parsing d'une callback_data. */
 export type ParsedCallback =
   | { kind: 'home' }
+  | { kind: 'contact' }
   | { kind: 'category'; catId: string }
   | { kind: 'product'; catId: string; prodId: string }
   | { kind: 'addToCart'; catId: string; prodId: string }
@@ -48,6 +50,7 @@ export function parseCallback(data: string): ParsedCallback {
 
   if (ns === 'nav') {
     if (action === 'home') return { kind: 'home' };
+    if (action === 'contact') return { kind: 'contact' };
     if (action === 'cat' && arg1) return { kind: 'category', catId: arg1 };
     if (action === 'prod' && arg1 && arg2) {
       return { kind: 'product', catId: arg1, prodId: arg2 };

@@ -126,6 +126,10 @@ try {
   const text = order ? renderOrderText(order) : '';
   check('renderOrderText : "Retrait en boutique", pas de ligne Adresse', text.includes('Retrait en boutique') && !text.includes('Adresse :'));
 
+  const { contactView } = await import('../src/views.ts');
+  const contact = contactView().text;
+  check('contactView : affiche le telephone de la boutique', contact.includes(features.contact.phone!) && contact.includes(features.displayName));
+
   const dash = getDashboard();
   check('getDashboard : activeRoutes vide, pas de crash', Array.isArray(dash.activeRoutes) && dash.activeRoutes.length === 0);
   check('  commande comptee en pending', (getStatusCounts().pending ?? 0) === 1);

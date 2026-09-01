@@ -143,8 +143,31 @@ export function categoriesView(): View {
     keyboard: Markup.inlineKeyboard([
       ...shopButtonRow('🛍️ Ouvrir la boutique'),
       ...chunk(catButtons, 2),
-      [Markup.button.callback('🛒 Mon panier', CB.showCart())],
+      [
+        Markup.button.callback('🛒 Mon panier', CB.showCart()),
+        Markup.button.callback('☎️ Nous contacter', CB.contact()),
+      ],
     ]),
+  };
+}
+
+/** Ecran "Nous contacter" : coordonnees de la boutique (features.contact). */
+export function contactView(): View {
+  const c = features.contact;
+  const lines: string[] = [];
+  if (c.phone) lines.push(`📞 <b>${esc(c.phone)}</b>`);
+  if (c.address) lines.push(`📍 ${esc(c.address)}`);
+  if (c.hours) lines.push(`🕒 ${esc(c.hours)}`);
+  if (c.note) lines.push(esc(c.note));
+
+  const body =
+    lines.length > 0
+      ? lines.join('\n')
+      : 'Réponds directement dans cette conversation, on te recontacte.';
+
+  return {
+    text: `${section('Nous contacter')}\n\n<b>${esc(features.displayName)}</b>\n${body}`,
+    keyboard: Markup.inlineKeyboard([[Markup.button.callback('⬅️ La carte', CB.home())]]),
   };
 }
 

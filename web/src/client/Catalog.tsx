@@ -82,6 +82,19 @@ export function Catalog({ menu, config, cart, onOpen, onQuickAdd, onCart, onOrde
           </div>
         </section>
       ))}
+
+      {(config.contact.phone || config.contact.address || config.contact.hours) && (
+        <footer className="shop-contact">
+          <span className="shop-contact__name">{config.displayName}</span>
+          {config.contact.phone && (
+            <a href={`tel:${config.contact.phone.replace(/\s/g, '')}`}>
+              ☎ {config.contact.phone}
+            </a>
+          )}
+          {config.contact.hours && <span>{config.contact.hours}</span>}
+          {config.contact.address && <span>{config.contact.address}</span>}
+        </footer>
+      )}
     </div>
   );
 }

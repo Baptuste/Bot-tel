@@ -22,6 +22,7 @@ import { requireUser } from './auth';
 function clientConfig() {
   return {
     displayName: features.displayName,
+    contact: features.contact,
     fulfillment: features.fulfillment,
     requiresAddress: features.requiresAddress,
     requiresPhone: features.requiresPhone,

@@ -764,6 +764,28 @@ textarea {
   gap: var(--s-4);
 }
 
+/* Pied de page vitrine : coordonnees de la boutique. */
+.shop-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: var(--s-3);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-sm);
+  color: var(--hint);
+  text-align: center;
+}
+.shop-contact__name {
+  font-weight: 600;
+  color: var(--text);
+}
+.shop-contact a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
 /* Etats plein-ecran : chargement / erreur / boutique fermee. */
 .shop-state {
   align-items: center;

@@ -18,6 +18,7 @@ export interface OrderStage {
 export interface ClientFeatures {
   clientId: string;
   displayName: string;
+  contact: { phone?: string; address?: string; hours?: string; note?: string };
   fulfillment: 'delivery' | 'pickup' | 'both';
   requiresAddress: boolean;
   requiresPhone: boolean;

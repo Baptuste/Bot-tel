@@ -23,6 +23,7 @@ export type Menu = Record<string, MenuCategory>;
 
 export interface ShopConfig {
   displayName: string;
+  contact: { phone?: string; address?: string; hours?: string; note?: string };
   fulfillment: 'delivery' | 'pickup' | 'both';
   requiresAddress: boolean;
   requiresPhone: boolean;
