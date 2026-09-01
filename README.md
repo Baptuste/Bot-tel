@@ -1,12 +1,15 @@
 # Bot Tel
 
-Bot Telegram d'une petite boutique de livraison + Mini App admin.
+Bot Telegram d'une petite boutique de livraison + **Mini App admin & client**.
+En production sur une VM Oracle Cloud — [`docs/deploiement.md`](docs/deploiement.md).
 
 **Documentation** :
 - [`docs/cadrage.md`](docs/cadrage.md) — cadrage initial (le pourquoi, roadmap V1/V2)
 - [`docs/avancement.md`](docs/avancement.md) — état réel du projet, historique des briques
 - [`docs/coeur-et-modules.md`](docs/coeur-et-modules.md) — direction : cœur générique + modules par client
 - [`docs/feuille-de-route.md`](docs/feuille-de-route.md) — refactoring du cœur + nouveaux modules (fidélité, parrainage, créneaux à capacité…)
+- [`docs/mini-app-client.md`](docs/mini-app-client.md) — la vitrine client (catalogue photos, panier partagé, checkout)
+- [`docs/deploiement.md`](docs/deploiement.md) — mise en production (Oracle Cloud, systemd, Caddy)
 
 Ce README couvre l'architecture et l'installation.
 
@@ -25,6 +28,10 @@ Ce README couvre l'architecture et l'installation.
   A la validation, les produits devenus indisponibles / re-tarifes sont signales
   avant de confirmer ;
 - `/mes_commandes` : historique client (lecture simple) ;
+- **Mini App client** (vitrine) : bouton inline « 🛍️ Ouvrir la boutique » →
+  catalogue photos, panier **partagé avec le bot** (table `cart`), checkout complet,
+  historique + « recommander ». Le parcours texte du bot reste comme repli. Voir
+  [`docs/mini-app-client.md`](docs/mini-app-client.md) ;
 - **mini-admin dans le bot** : `/admin` (tableau de bord + boutons de transition de
   statut). Chaque changement de statut **notifie le client** (le bot devient bidirectionnel) ;
 - **Mini App admin** (React, `web/`) servie par le serveur HTTP du bot. Auth =
@@ -78,7 +85,7 @@ parrainage. Reste : mode de paiement / pourboire au checkout ; notifications
 marketing (bloqué : règles Telegram) ; transverse : hébergement 24/7, RGPD, stock.
 Voir `docs/avancement.md` et `docs/feuille-de-route.md`.
 
-## Lancer la Mini App admin (dev)
+## Lancer les Mini App (dev)
 
 ```powershell
 npm run web:install     # 1re fois : dependances de web/
@@ -89,11 +96,15 @@ npm run tunnel          # dans un 2e terminal : tunnel HTTPS cloudflared -> loca
 
 Le tunnel affiche une URL `https://xxx.trycloudflare.com`. La copier dans `.env` :
 `WEBAPP_URL=https://xxx.trycloudflare.com`, puis **relancer `npm run dev`**
-(le bot y branche le bouton "menu" de la Mini App et le bouton dans `/admin`).
+(le bot y branche le bouton "menu" de la Mini App et les boutons `web_app`).
 
 > L'URL du tunnel gratuit change a chaque redemarrage de cloudflared : il faut
-> re-renseigner `WEBAPP_URL` et relancer le bot. En prod, on hebergera le serveur
-> avec un vrai domaine.
+> re-renseigner `WEBAPP_URL` et relancer le bot. **En production**, le serveur est
+> heberge avec une URL stable — [`docs/deploiement.md`](docs/deploiement.md).
+
+Preview des ecrans de la **Mini App client** sans Telegram :
+`npm run preview:client` -> `http://localhost:3000/_client-preview.html`
+(initData non-admin forge, bundle reel sur `/api/shop`).
 
 ## Architecture (le "pourquoi")
 
@@ -107,7 +118,7 @@ se greffe sans reecrire l'existant.
 | `data/bot.db` | Base SQLite locale (ignoree par git). Cree automatiquement au 1er lancement. |
 | `src/catalog.ts` | Catalogue en base : `getMenu()` (menu filtre pour le bot) + CRUD (Mini App). |
 | `src/uploads.ts` | Images produits sur disque (`data/uploads/`), decode base64 / suppression. |
-| `src/db.ts` | Connexion SQLite (`DB_PATH`) + tables du cœur (`orders`, `categories`, `products`, `product_variants`, `sessions`, `customers`) ; tables de module créées **seulement si le flag est actif** : `routes` / `route_templates` / `drivers` (`deliverySlots`), `message_templates` (`messaging`), `loyalty`, `referrals`. |
+| `src/db.ts` | Connexion SQLite (`DB_PATH`) + tables du cœur (`orders`, `categories`, `products`, `product_variants`, `sessions`, `customers`, `cart`) ; tables de module créées **seulement si le flag est actif** : `routes` / `route_templates` / `drivers` (`deliverySlots`), `message_templates` (`messaging`), `loyalty`, `referrals`. |
 | `src/orders.ts` | Requetes sur `orders`. Une commande = donnee **definitive**. Statut = id d'étape (`string`). |
 | `src/orderStages.ts` | Machine à états : helpers dérivés de `features.orderFlow` (rôles `placed / accepted / fulfilling / fulfilled / cancelled`), `validateOrderFlow()`. |
 | `src/drivers.ts` | Livreurs (sous-module `deliverySlots.drivers`) : CRUD, affectation a une tournee. |
@@ -121,8 +132,11 @@ se greffe sans reecrire l'existant.
 | `src/dashboard.ts` | Agregats du tableau de bord admin + detection des commandes en attente trop longtemps. |
 | `src/messageTemplates.ts` | Modeles de messages pre-ecrits (module `messaging`, seed de 4 par defaut). |
 | `src/sessionStore.ts` | Store de sessions telegraf sur SQLite (persistance + TTL + purge). **Cœur.** |
-| `src/api/` | Routes Express de la Mini App (`orders`, `catalog`, `customers`, `dashboard`, `features`) + montées conditionnellement (`routes`, `drivers`, `templates`) + `auth` (initData). |
-| `src/cart.ts` | Panier **en memoire** (perdu au redemarrage). Devient une ligne `orders` a la validation. **Cœur.** |
+| `src/api/` | Routes Express : Mini App **admin** (`orders`, `catalog`, `customers`, `dashboard`, `features` + conditionnels `routes`, `drivers`, `templates`) ; Mini App **client** (`shop` — `/api/shop/*`) ; `auth` (`verifyInitData` + `requireUser`). |
+| `src/cart.ts` | Panier **en base** (table `cart`), stocke des **references** (`cat/prod/variant/qty`) resolues a la lecture depuis `getMenu()`. Partage entre le bot et la Mini App client. Devient une ligne `orders` a la validation. **Cœur.** |
+| `src/order.ts` | `createClientOrder()` : creation de commande **pure** (sans messagerie) — reconcile + `createOrder` + `upsertCustomer` + parrainage. Appelee par la scene checkout du bot **et** l'API de la Mini App client. |
+| `src/api/shop.ts` | API de la **Mini App client** (`/api/shop/*`, auth `requireUser` = initData valide, pas forcement admin) : menu, panier, creneaux, historique, checkout, « recommander ». |
+| `web/src/client/` | Vitrine client React : `Catalog`, `Product`, `Cart`, `Checkout`, `OrderSent`, `Orders`. `App.tsx` route admin/client selon `GET /api/features` (`?view=client` force la vitrine). |
 | `src/views.ts` | Transforme (menu, panier) en `{ text, keyboard }`. N'envoie rien. Libellé variantes depuis `features.ts`. |
 | `src/callbacks.ts` | `callback_data` structurees (`nav:cat:pizzas`...) + parsing. Un seul listener generique. |
 | `src/scenes/quantity.ts` | Scene simple (BaseScene) : attend une quantite. |

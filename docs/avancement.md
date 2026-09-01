@@ -4,7 +4,9 @@
 Pour le "pourquoi" des choix : [`cadrage.md`](./cadrage.md) (cadrage initial) et
 [`coeur-et-modules.md`](./coeur-et-modules.md) (direction : cœur générique + modules).
 
-> Dernière mise à jour : 2026-08-31, Partie 2 terminée + Partie 3 : créneaux à capacité limitée.
+> Dernière mise à jour : 2026-09-01 — **Mini App client livrée** (vitrine catalogue/panier/checkout,
+> panier partagé bot ↔ Mini App) + **mise en production** sur Oracle Cloud (cf.
+> [`deploiement.md`](./deploiement.md)).
 
 **Modularisation « cœur + modules » : terminée** (6 étapes, section dédiée plus
 bas) — voir [`coeur-et-modules.md`](./coeur-et-modules.md). Le bot est piloté par
@@ -28,6 +30,8 @@ restent à confirmer sur le téléphone.
 |---|---|
 | **V1** (bot client + base + Mini App admin) | ✅ 100 % |
 | **V2** | ~95 % — reste le paiement/pourboire au checkout |
+| **Mini App client** (vitrine) | ✅ livrée — cf. section dédiée |
+| **Hébergement 24/7** | ✅ en production sur Oracle Cloud ([`deploiement.md`](./deploiement.md)) |
 | **Plus tard** | non commencé (normal) |
 
 **17 briques livrées** (historique plus bas). Bonus au-delà du plan : tournées
@@ -35,7 +39,8 @@ récurrentes + choix du créneau client, prix par taille, images produits, suivi
 tournée en direct.
 
 **Manques V2** : mode de paiement (espèces / carte) + pourboire au checkout.
-**Transverse non fait** : RGPD, hébergement 24/7, gestion de stock.
+**Transverse non fait** : RGPD, gestion de stock. *(Hébergement 24/7 : fait, cf.
+[`deploiement.md`](./deploiement.md).)*
 
 ---
 
@@ -261,12 +266,39 @@ Objectif : réduire le cœur au socle incompressible.
 
 ---
 
+## Mini App client — la vitrine
+
+Plan : [`mini-app-client.md`](./mini-app-client.md). Simulation validée (« Le parcours
+de Léa »). **9 étapes livrées** (`npm run test:client` : **18**).
+
+Le cadrage acte enfin la vraie répartition : le **bot** reste sobre (notifications +
+parcours texte de repli), la **vitrine riche = une Mini App client** dans `web/`, et
+le **panier est partagé** entre les deux — une seule source de vérité.
+
+| # | Étape | Livré |
+|---|---|---|
+| 1 | **Panier en base** | table `cart` (`db.ts`), `src/cart.ts` réécrit `Map` → SQLite, stocke des **références** résolues à la lecture (`getMenu()`) → un produit retiré disparaît du panier tout seul. Purge des paniers abandonnés au planificateur. |
+| 2–3 | **`createClientOrder` + API `/api/shop/*`** | `src/order.ts` : logique de commande **pure** (reconcile + `createOrder` + `upsertCustomer` + parrainage), appelée par la scène du bot **et** l'endpoint. `src/api/shop.ts` (auth `requireUser` = initData valide sans contrôle admin) : `menu`, `cart` CRUD, `slots`, `last-order`, `orders` (historique), `POST /orders` (checkout → reçu bot + `notifyNewOrder`), `POST /cart/reorder`. |
+| 4 | **Split `web/`** | `App.tsx` = routeur : `GET /api/features` → 200 `<AdminApp>` / 403 `<ClientApp>`. `?view=client` force la vitrine même pour un admin. |
+| 5 | **Catalogue → produit → panier** | `web/src/client/` : `Catalog`, `Product`, `Cart`. Registre visuel plus doux que l'admin (cartes rondes, photos), même `--accent`. Placeholder sans photo = emoji de la catégorie. `MainButton` / `BackButton` natifs Telegram (`client/hooks.ts`). |
+| 6 | **Checkout client** | `Checkout.tsx` (adresse / tél / créneau / précision, champs pilotés par la config, pré-remplissage via `/shop/last-order`) → `POST /api/shop/orders` → le bot envoie le reçu dans le chat. `OrderSent.tsx` (confirmation, `WebApp.close()`). Le parcours texte du bot reste pour le repli. |
+| 7 | **Historique + « recommander »** | `Orders.tsx` (statut, articles, date, total) ; `POST /api/shop/cart/reorder` re-remplit le panier depuis une commande passée (ignore les articles retirés du menu). |
+| 8 | **Ouverture depuis le bot** | bouton inline `web_app` « 🛍️ Ouvrir la boutique » sur l'accueil et le panier (`src/views.ts` `shopButtonRow`, si `WEBAPP_URL` définie), URL `?view=client`. Panier partagé → bascule bot ↔ Mini App sans rien reperdre. |
+| 9 | **Polish** | états chargement / erreur / vides unifiés (`.shop-state`), `useNoMainButton()`, thème clair **et** sombre Telegram vérifiés. |
+
+Preview des écrans client hors Telegram : `npm run preview:client` → `http://localhost:3000/_client-preview.html`.
+
+Reste possible : `POST /api/shop/orders/:id/items` (ajout à une commande en cours, parcours de Léa étape 10).
+
+---
+
 ## Environnement de développement (spécifique à cette machine)
 
 - **Node.js v22.20.0** installé en portable dans `%LOCALAPPDATA%\Programs\nodejs`
   (l'installeur MSI winget exigeait une élévation UAC indisponible). Ajouté au PATH
   utilisateur.
 - **cloudflared** binaire portable dans `%LOCALAPPDATA%\Programs\cloudflared` (+ PATH).
+  *(Servait au tunnel HTTPS de dev ; la prod n'en dépend plus — cf. [`deploiement.md`](./deploiement.md).)*
 - Aucun accès administrateur Windows requis.
 - `npm install` échouait sous le bac à sable de Claude Code (EPERM sur `E:\`) — les
   commandes npm/node ont été lancées hors sandbox.
@@ -286,8 +318,8 @@ Objectif : réduire le cœur au socle incompressible.
 - Disponibilité / planning des livreurs, répartition semi-auto.
 
 ### Transverse
-- **Hébergement 24/7** — pour ne plus dépendre du tunnel cloudflared éphémère
-  (l'URL change à chaque redémarrage → re-renseigner `WEBAPP_URL` et relancer le bot).
+- ~~Hébergement 24/7~~ → **fait** : VM Oracle Cloud, [`deploiement.md`](./deploiement.md).
+  Reste : réserver l'IP publique, envisager un vrai nom de domaine.
 - **RGPD** — mécanisme de suppression des données personnelles sur demande.
 - **Gestion de stock** — jamais abordée (alerte seuil bas, rupture).
 - **Optimisations images** — cache du `file_id` Telegram après le premier envoi.
