@@ -18,7 +18,7 @@ Client ──HTTPS──►  Caddy :443  ──►  localhost:3000  ──►  N
 |---|---|
 | **Hébergeur** | Oracle Cloud Infrastructure, tenancy Free Tier, région `eu-marseille-1` (home region — définitive) |
 | **VM** | `bot-tel` · Oracle Linux 9 · ARM `VM.Standard.A1.Flex` 1 OCPU / 6 Go · **Always Free** |
-| **IP publique** | `129.151.240.254` — **à réserver** (console → instance → VNIC → IPv4 → *Reserved*), sinon un stop/start la change |
+| **IP publique** | `129.151.240.254` — éphémère, mais un timer systemd (`sync-ip`) re-aligne tout seul le hostname `sslip.io` si elle change (voir plus bas) — rien à réserver |
 | **Accès SSH** | `ssh -i ~/.ssh/bottel opc@129.151.240.254` (utilisateur `opc`) |
 | **URL Mini App** | `https://129.151.240.254.sslip.io` — [sslip.io](https://sslip.io) résout `<ip>.sslip.io` → l'IP, sans compte ni enregistrement DNS. `WEBAPP_URL` dans `.env`. |
 | **Réseau OCI** | VCN `bot-tel-vcn` (Start VCN Wizard) ; Security List : ingress TCP **22 + 80 + 443** depuis `0.0.0.0/0` |
@@ -29,6 +29,7 @@ Client ──HTTPS──►  Caddy :443  ──►  localhost:3000  ──►  N
 |---|---|
 | `bot-tel` | `node --import tsx src/index.ts` (`User=opc`, `Restart=always`, `enabled`) — démarre au boot |
 | `caddy` | reverse proxy `:443 → localhost:3000`, `/etc/caddy/Caddyfile`, certificat Let's Encrypt automatique (tls-alpn-01) |
+| `sync-ip.timer` | `/usr/local/bin/sync-ip.sh` — 30 s après chaque boot + toutes les 15 min : compare l'IP publique actuelle au hostname du Caddyfile ; si elle a changé, réécrit `Caddyfile` + `.env` (`<ip>.sslip.io`), recharge Caddy, redémarre le bot. **→ l'IP éphémère n'a pas besoin d'être réservée.** |
 
 ```bash
 systemctl status bot-tel caddy
@@ -77,7 +78,6 @@ scp -i $HOME\.ssh\bottel opc@129.151.240.254:/home/opc/backups/bot-AAAA-MM-JJ_HH
 
 ## Reste à faire
 
-- **Réserver l'IP publique** (sinon l'URL sslip.io casse à un stop/start).
-- Optionnel : **vrai nom de domaine** (~10 €/an) → remplacer `129.151.240.254.sslip.io` dans `/etc/caddy/Caddyfile` + `.env`, `systemctl reload caddy`, redémarrer le bot.
 - Base de prod **vierge** : saisir le vrai catalogue + photos via la Mini App admin.
-- Passer le compte OCI en *Pay As You Go* (reste 0 € en Always Free, supprime le risque de récupération d'instance inactive).
+- Optionnel : **vrai nom de domaine** (~10 €/an) → remplacer `<ip>.sslip.io` dans `/etc/caddy/Caddyfile` + `.env` + **désactiver `sync-ip.timer`**, `systemctl reload caddy`, redémarrer le bot.
+- Optionnel : passer le compte OCI en *Pay As You Go* (reste 0 € en Always Free, supprime le risque de récupération d'instance inactive).
