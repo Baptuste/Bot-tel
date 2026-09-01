@@ -81,7 +81,13 @@ export function Checkout({ config, cart, onDone, onItemsChanged, onBack }: Props
     loading: submitting || !ready,
   });
 
-  if (loading) return <p className="muted">Chargement…</p>;
+  if (loading) {
+    return (
+      <div className="shop shop-state">
+        <p className="shop-state__text">Un instant…</p>
+      </div>
+    );
+  }
 
   const payLabel =
     config.payment.methods.length === 0

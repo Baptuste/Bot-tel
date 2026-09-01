@@ -35,8 +35,8 @@ export function Orders({ onReorder, onBack }: Props) {
     <div className="shop">
       <h1 className="shop-title">Mes commandes</h1>
 
-      {err && <p className="co__err">{err}</p>}
-      {!orders && !err && <p className="muted">Chargement…</p>}
+      {err && <p className="co__err">Historique indisponible pour le moment.</p>}
+      {!orders && !err && <p className="shop-state__text">Chargement…</p>}
       {orders?.length === 0 && <p className="empty">Aucune commande pour le moment.</p>}
 
       <ul className="ordlist">

@@ -103,8 +103,23 @@ export function ClientApp() {
     [],
   );
 
-  if (error) return <div className="error">Chargement impossible : {error}</div>;
-  if (!data) return <p className="muted">Chargement…</p>;
+  if (error) {
+    return (
+      <div className="shop shop-state">
+        <p className="shop-state__title">Boutique indisponible</p>
+        <p className="shop-state__text">
+          Impossible de charger la carte pour le moment. Réessaie dans un instant.
+        </p>
+      </div>
+    );
+  }
+  if (!data) {
+    return (
+      <div className="shop shop-state">
+        <p className="shop-state__text">Chargement de la carte…</p>
+      </div>
+    );
+  }
   const { menu, config } = data;
 
   if (screen.name === 'product') {
