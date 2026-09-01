@@ -40,7 +40,8 @@ sudo journalctl -u bot-tel -f          # logs du bot en direct
 
 - **Deux pare-feux** : `firewall-cmd --add-service={http,https}` sur la VM **et** la Security List OCI (console).
 - **SELinux** : `Enforcing` + `setsebool -P httpd_can_network_connect 1` (Caddy → localhost:3000).
-- `.env` en `chmod 600`, jamais commité.
+- `.env` en `chmod 600`, jamais commité. Contient aussi `SEED_DEMO_CATALOG=0`
+  (le catalogue de démo `menu.json` n'est pas ré-injecté au démarrage).
 
 ## Code
 

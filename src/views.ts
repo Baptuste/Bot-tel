@@ -160,14 +160,22 @@ export function contactView(): View {
   if (c.hours) lines.push(`🕒 ${esc(c.hours)}`);
   if (c.note) lines.push(esc(c.note));
 
+  const canWrite = config.adminIds.length > 0;
   const body =
     lines.length > 0
       ? lines.join('\n')
-      : 'Réponds directement dans cette conversation, on te recontacte.';
+      : canWrite
+        ? 'Écris-nous, on te répond ici.'
+        : 'Réponds directement dans cette conversation.';
 
   return {
     text: `${section('Nous contacter')}\n\n<b>${esc(features.displayName)}</b>\n${body}`,
-    keyboard: Markup.inlineKeyboard([[Markup.button.callback('⬅️ La carte', CB.home())]]),
+    keyboard: Markup.inlineKeyboard([
+      ...(canWrite
+        ? [[Markup.button.callback('💬 Écrire à la boutique', 'support:start')]]
+        : []),
+      [Markup.button.callback('⬅️ La carte', CB.home())],
+    ]),
   };
 }
 

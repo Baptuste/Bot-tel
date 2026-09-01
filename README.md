@@ -27,9 +27,11 @@ Ce README couvre l'architecture et l'installation.
   vide. Adresse / numero / precision de la derniere commande proposes en un clic.
   A la validation, les produits devenus indisponibles / re-tarifes sont signales
   avant de confirmer ;
-- `/mes_commandes` : historique client (lecture simple) ; `/contact` : coordonnees
-  de la boutique (`features.contact` : tel, adresse, horaires) — aussi en bouton
-  « ☎️ Nous contacter » sur l'accueil et en pied de la Mini App client ;
+- `/mes_commandes` : historique client (lecture simple) ; `/contact` (bouton
+  « ☎️ Nous contacter ») : coordonnees de la boutique (`features.contact`) +
+  **« 💬 Écrire à la boutique »** — relais de messagerie : le message part a
+  l'admin, qui repond via un bouton « Répondre » (`src/support.ts`, scenes
+  `support` / `support-reply`) ;
 - **Mini App client** (vitrine) : bouton inline « 🛍️ Ouvrir la boutique » →
   catalogue photos, panier **partagé avec le bot** (table `cart`), checkout complet,
   historique + « recommander ». Le parcours texte du bot reste comme repli. Voir
@@ -138,6 +140,7 @@ se greffe sans reecrire l'existant.
 | `src/cart.ts` | Panier **en base** (table `cart`), stocke des **references** (`cat/prod/variant/qty`) resolues a la lecture depuis `getMenu()`. Partage entre le bot et la Mini App client. Devient une ligne `orders` a la validation. **Cœur.** |
 | `src/order.ts` | `createClientOrder()` : creation de commande **pure** (sans messagerie) — reconcile + `createOrder` + `upsertCustomer` + parrainage. Appelee par la scene checkout du bot **et** l'API de la Mini App client. |
 | `src/api/shop.ts` | API de la **Mini App client** (`/api/shop/*`, auth `requireUser` = initData valide, pas forcement admin) : menu, panier, creneaux, historique, checkout, « recommander ». |
+| `src/support.ts` | Relais de messagerie client <-> admin (« Écrire à la boutique » -> transmis a l'admin -> bouton « Répondre »). Rien de persiste. |
 | `web/src/client/` | Vitrine client React : `Catalog`, `Product`, `Cart`, `Checkout`, `OrderSent`, `Orders`. `App.tsx` route admin/client selon `GET /api/features` (`?view=client` force la vitrine). |
 | `src/views.ts` | Transforme (menu, panier) en `{ text, keyboard }`. N'envoie rien. Libellé variantes depuis `features.ts`. |
 | `src/callbacks.ts` | `callback_data` structurees (`nav:cat:pizzas`...) + parsing. Un seul listener generique. |

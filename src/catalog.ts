@@ -133,10 +133,18 @@ function toVariant(row: VariantRow): Variant {
 
 // --- Seed initial ----------------------------------------------------------
 
-/** Importe menu.json dans la base si le catalogue est vide (1er demarrage). */
+/**
+ * Importe menu.json dans la base si le catalogue est vide (1er demarrage).
+ * `SEED_DEMO_CATALOG=0` (prod : vrai commerce) -> ne seme rien, le catalogue
+ * se saisit via la Mini App admin.
+ */
 export function seedCatalogIfEmpty(): void {
   const { n } = q.countCategories.get() as { n: number };
   if (n > 0) return;
+  if (process.env.SEED_DEMO_CATALOG === '0') {
+    console.log('[catalog] SEED_DEMO_CATALOG=0 : catalogue laisse vide (a saisir dans la Mini App).');
+    return;
+  }
 
   const raw = readFileSync(resolve(process.cwd(), 'menu.json'), 'utf-8');
   const json = JSON.parse(raw) as Record<

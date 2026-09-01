@@ -310,6 +310,24 @@ Reste possible : `POST /api/shop/orders/:id/items` (ajout à une commande en cou
 
 ---
 
+## Préparation du pilote (2026-09-01)
+
+Passe avant d'ouvrir à de vrais clients :
+
+- **Alerte admin sur notif client échouée** — `safeSend(..., { alertAdmins: true,
+  context })` : un échec d'envoi à un client remonte à l'admin dans le chat
+  (« ⚠️ Notification client non délivrée »), posé sur toutes les notifs client.
+- **Motif d'annulation transmis au client** (« Motif : rupture de stock ») au lieu
+  du générique. Divers textes client resserrés (bot + Mini App).
+- **`/contact` + « ☎️ Nous contacter »** — coordonnées (`features.contact`) +
+  **relais de messagerie** : « 💬 Écrire à la boutique » → message transmis à
+  l'admin → bouton « Répondre » (`src/support.ts`, scenes `support` /
+  `support-reply`). Aussi un pied de page contact sur la Mini App client.
+- **`SEED_DEMO_CATALOG=0`** — en prod, `seedCatalogIfEmpty()` ne réinjecte plus
+  `menu.json` : catalogue vierge, à saisir dans la Mini App admin.
+
+`test:boutique` : 32, `test:journee` : 31, `test:client` : 19. Déployé.
+
 ## Ce qui reste
 
 ### V2 pas encore fait

@@ -11,6 +11,7 @@ import { changeStatus, orderKeyboard, renderOrderText } from './orderFlow';
 import { orderStages, stageById, statusLabel } from './orderStages';
 import { getOpenOrders, getStatusCounts, type OrderStatus } from './orders';
 import { markDelivered } from './routes';
+import { SUPPORT_REPLY_SCENE_ID } from './scenes/support';
 
 export function isAdmin(id: number): boolean {
   return config.adminIds.includes(id);
@@ -69,5 +70,15 @@ export function registerAdmin(bot: Telegraf<BotContext>): void {
         /* message identique ou trop vieux pour etre edite */
       }
     }
+  });
+
+  // Bouton « Répondre » sous un message client transmis -> scene de reponse.
+  bot.action(/^adm:sreply:(\d+)$/, async (ctx) => {
+    if (!isAdmin(userId(ctx))) {
+      await ctx.answerCbQuery("Reserve a l'admin");
+      return;
+    }
+    await ctx.answerCbQuery();
+    await ctx.scene.enter(SUPPORT_REPLY_SCENE_ID, { clientId: Number(ctx.match?.[1] ?? 0) });
   });
 }

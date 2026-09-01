@@ -130,6 +130,23 @@ try {
   const contact = contactView().text;
   check('contactView : affiche le telephone de la boutique', contact.includes(features.contact.phone!) && contact.includes(features.displayName));
 
+  // --- 6c. Relais de messagerie client <-> admin ---
+  {
+    const { config } = await import('../src/config.ts');
+    const { relayClientMessage, relayAdminReply } = await import('../src/support.ts');
+    const admin = config.adminIds[0]!;
+    await relayClientMessage(telegram, { id: USER, username: 'lea' }, 'ma commande est en retard');
+    check(
+      'message client transmis a l\'admin',
+      sent.some((m) => m.chatId === admin && m.text.includes('ma commande est en retard')),
+    );
+    await relayAdminReply(telegram, USER, 'on regarde ca tout de suite');
+    check(
+      'reponse admin transmise au client',
+      sent.some((m) => m.chatId === USER && m.text.includes('on regarde ca tout de suite')),
+    );
+  }
+
   const dash = getDashboard();
   check('getDashboard : activeRoutes vide, pas de crash', Array.isArray(dash.activeRoutes) && dash.activeRoutes.length === 0);
   check('  commande comptee en pending', (getStatusCounts().pending ?? 0) === 1);

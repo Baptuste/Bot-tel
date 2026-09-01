@@ -27,6 +27,7 @@ import { startScheduler } from './scheduler';
 import { sqliteSessionStore } from './sessionStore';
 import { QUANTITY_SCENE_ID, quantityScene } from './scenes/quantity';
 import { CHECKOUT_SCENE_ID, checkoutScene } from './scenes/checkout';
+import { SUPPORT_SCENE_ID, supportScene, supportReplyScene } from './scenes/support';
 import {
   cartView,
   categoriesView,
@@ -48,7 +49,12 @@ getMenu();
 
 const bot = new Telegraf<BotContext>(config.botToken);
 
-const stage = new Scenes.Stage<BotContext>([quantityScene, checkoutScene]);
+const stage = new Scenes.Stage<BotContext>([
+  quantityScene,
+  checkoutScene,
+  supportScene,
+  supportReplyScene,
+]);
 // Sessions persistees en base : un checkout en cours survit a un redemarrage du bot.
 bot.use(session({ store: sqliteSessionStore }));
 bot.use(stage.middleware());
@@ -201,6 +207,12 @@ registerAdmin(bot);
 
 // Bouton "libelle" du panier : pas d'action, on explique juste les commandes voisines.
 bot.action('noop', (ctx) => ctx.answerCbQuery('Utilise ➖ / ➕ pour ajuster la quantité'));
+
+// « Écrire à la boutique » -> scene de relais client -> admin.
+bot.action('support:start', async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.scene.enter(SUPPORT_SCENE_ID);
+});
 
 // --- Un SEUL listener generique pour toute la navigation par boutons ---
 bot.action(CALLBACK_PATTERN, async (ctx) => {
