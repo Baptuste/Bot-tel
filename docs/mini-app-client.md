@@ -109,17 +109,25 @@ texte du bot (`scenes/checkout.ts`) reste pour le repli, inchangé.
 
 ## Ordre de travail (étapes testables)
 
-| # | Étape | Test |
+Chantier terminé — les 9 étapes sont livrées (`npm run test:client` : 18 OK).
+
+| # | Étape | État |
 |---|---|---|
-| 1 | Table `cart` + `cart.ts` sur la base | `smoke` + parcours bot manuel inchangé |
-| 2 | Extraire `createClientOrder` (bot l'utilise) | bot inchangé |
-| 3 | `requireUser` + `/api/shop/*` | `scripts/client.mts` (initData forgé, base isolée) |
-| 4 | Split `web/` : routeur, `ClientApp` vide, admin intact | admin Mini App inchangée |
-| 5 | UI client : catalogue → produit → panier | screenshot par écran |
-| 6 | Checkout client → commande → reçu bot | e2e via `client.mts` + test Telegram |
-| 7 | Historique + « recommander » | `client.mts` |
-| 8 | Boutons d'ouverture dans le bot | test Telegram |
-| 9 | Polish : `MainButton`, thème, états vides | — |
+| 1 | Table `cart` + `cart.ts` sur la base | ✅ |
+| 2 | Extraire `createClientOrder` (bot l'utilise) | ✅ |
+| 3 | `requireUser` + `/api/shop/*` | ✅ `scripts/client.mts` |
+| 4 | Split `web/` : routeur, `ClientApp`, admin intact | ✅ |
+| 5 | UI client : catalogue → produit → panier | ✅ |
+| 6 | Checkout client → commande → reçu bot | ✅ `POST /api/shop/orders` |
+| 7 | Historique + « recommander » | ✅ `POST /api/shop/cart/reorder` |
+| 8 | Boutons d'ouverture dans le bot | ✅ `web_app` accueil + panier |
+| 9 | Polish : `MainButton`, thème, états vides | ✅ |
+
+Preview local des écrans client : `npm run preview:client` puis
+`http://localhost:3000/_client-preview.html` (bot lancé).
+
+Reste hors périmètre : `POST /api/shop/orders/:id/items` (ajout à une
+commande en cours, parcours de Léa étape 10), hébergement 24/7.
 
 ## Ce qui ne change pas
 

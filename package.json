@@ -20,6 +20,7 @@
     "test:client": "tsx scripts/client.mts",
     "web:install": "npm --prefix web install",
     "web:dev": "npm --prefix web run dev",
+    "preview:client": "npm run build:web && tsx scripts/client-preview.mts",
     "tunnel": "cloudflared tunnel --url http://localhost:3000"
   },
   "dependencies": {
