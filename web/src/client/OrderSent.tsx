@@ -18,7 +18,7 @@ export function OrderSent({ orderId, onOrders }: Props) {
       <div className="sent__mark">✓</div>
       <h1 className="sent__title">Commande #{orderId} envoyée</h1>
       <p className="sent__text">
-        Le point de vente vient de la recevoir. Tu reçois la confirmation et le suivi
+        La boutique vient de la recevoir. Tu reçois la confirmation et le suivi
         directement dans la conversation.
       </p>
       <button className="linkback" onClick={onOrders}>

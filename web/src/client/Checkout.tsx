@@ -95,6 +95,7 @@ export function Checkout({ config, cart, onDone, onItemsChanged, onBack }: Props
       : config.payment.methods
           .map((m) => (m === 'cash' ? 'espèces' : 'carte'))
           .join(' ou ');
+  const payMoment = config.fulfillment === 'pickup' ? 'au retrait' : 'à la livraison';
 
   return (
     <div className="shop co">
@@ -131,7 +132,7 @@ export function Checkout({ config, cart, onDone, onItemsChanged, onBack }: Props
         <div className="co__field">
           <span className="co__label">Créneau</span>
           {slots.length === 0 ? (
-            <p className="co__hint">Aucun créneau ouvert — préparée au plus tôt.</p>
+            <p className="co__hint">Aucun créneau ouvert — ta commande sera préparée au plus tôt.</p>
           ) : (
             <div className="co__slots">
               {slots.map((s) => (
@@ -169,7 +170,7 @@ export function Checkout({ config, cart, onDone, onItemsChanged, onBack }: Props
           <span>{cart.count} article{cart.count > 1 ? 's' : ''}</span>
           <span>{cart.total} €</span>
         </div>
-        {payLabel && <p className="co__hint">Paiement à la remise : {payLabel}.</p>}
+        {payLabel && <p className="co__hint">Paiement {payMoment} : {payLabel}.</p>}
       </div>
     </div>
   );

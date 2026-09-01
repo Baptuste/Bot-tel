@@ -98,7 +98,12 @@ function buildTransitions(cfg: OrderFlowConfig): Record<string, Transition[]> {
       transitions.push({
         to: cancelStage.id,
         adminLabel: stage.cancelLabel,
-        clientMsg: (o) => fill(msg, o),
+        clientMsg: (o) => {
+          const reason = o.cancellation_reason?.trim();
+          return reason
+            ? `${fill(msg, o)}\n<i>Motif : ${escHtml(reason)}</i>`
+            : `${fill(msg, o)}\nContacte-nous pour en savoir plus.`;
+        },
       });
     }
     out[stage.id] = transitions;

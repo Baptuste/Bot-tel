@@ -306,6 +306,7 @@ try {
   check('14 notifs "livrée"', countText('— livrée') === 14);
   check('16 notifs "Ton livreur : <nom>"', countText('Ton livreur : ') === 16);
   check('2 notifs d\'annulation (no-shows)', countText('— annulée') === 2);
+  check('le motif d\'annulation est transmis au client', countText('Motif : ') >= 2);
 
   // --- Nettoyage ---
   catalog.deleteCategory(pizzas.id);

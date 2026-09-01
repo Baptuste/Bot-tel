@@ -60,8 +60,7 @@ export const DELIVERY_FLOW: OrderFlowConfig = {
       label: 'en attente de confirmation',
       shortLabel: 'En attente',
       cancelLabel: '❌ Refuser',
-      cancelMessage:
-        '❌ <b>Commande #{id} — refusée</b>\nContacte-nous pour en savoir plus.',
+      cancelMessage: '❌ <b>Commande #{id} — refusée</b>',
     },
     {
       id: 'confirmed',
@@ -72,8 +71,7 @@ export const DELIVERY_FLOW: OrderFlowConfig = {
       arrivalMessage:
         '✅ <b>Commande #{id} — confirmée</b>\nLivraison estimée dans ~45 min.',
       cancelLabel: '❌ Annuler',
-      cancelMessage:
-        '❌ <b>Commande #{id} — annulée</b>\nContacte-nous pour en savoir plus.',
+      cancelMessage: '❌ <b>Commande #{id} — annulée</b>',
     },
     {
       id: 'delivering',
@@ -81,10 +79,9 @@ export const DELIVERY_FLOW: OrderFlowConfig = {
       label: 'en cours de livraison',
       shortLabel: 'En livraison',
       advanceLabel: '🛵 En livraison',
-      arrivalMessage: '🛵 <b>Commande #{id} — en route</b>',
+      arrivalMessage: '🛵 <b>Commande #{id} — en route</b>\nLe livreur est en chemin.',
       cancelLabel: '❌ Souci',
-      cancelMessage:
-        '❌ <b>Commande #{id} — annulée</b>\nContacte-nous pour en savoir plus.',
+      cancelMessage: '❌ <b>Commande #{id} — annulée</b>',
     },
     {
       id: 'delivered',
@@ -107,8 +104,7 @@ export const PICKUP_FLOW: OrderFlowConfig = {
       label: 'en attente de confirmation',
       shortLabel: 'En attente',
       cancelLabel: '❌ Refuser',
-      cancelMessage:
-        '❌ <b>Commande #{id} — refusée</b>\nContacte-nous pour en savoir plus.',
+      cancelMessage: '❌ <b>Commande #{id} — refusée</b>',
     },
     {
       id: 'confirmed',
@@ -119,8 +115,7 @@ export const PICKUP_FLOW: OrderFlowConfig = {
       arrivalMessage:
         "✅ <b>Commande #{id} — confirmée</b>\nOn te prévient dès qu'elle est prête.",
       cancelLabel: '❌ Annuler',
-      cancelMessage:
-        '❌ <b>Commande #{id} — annulée</b>\nContacte-nous pour en savoir plus.',
+      cancelMessage: '❌ <b>Commande #{id} — annulée</b>',
     },
     {
       id: 'ready',
@@ -130,8 +125,7 @@ export const PICKUP_FLOW: OrderFlowConfig = {
       advanceLabel: '📦 Prête',
       arrivalMessage: '📦 <b>Commande #{id} — prête</b>\nTu peux venir la retirer.',
       cancelLabel: '❌ Souci',
-      cancelMessage:
-        '❌ <b>Commande #{id} — annulée</b>\nContacte-nous pour en savoir plus.',
+      cancelMessage: '❌ <b>Commande #{id} — annulée</b>',
     },
     {
       id: 'collected',
