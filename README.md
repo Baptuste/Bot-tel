@@ -110,6 +110,37 @@ Preview des ecrans de la **Mini App client** sans Telegram :
 `npm run preview:client` -> `http://localhost:3000/_client-preview.html`
 (initData non-admin forge, bundle reel sur `/api/shop`).
 
+## Carte du code (Graphify)
+
+`graphify-out/` contient un graphe de connaissance du code, interrogeable.
+`graph.json` + `GRAPH_REPORT.md` sont versionnes ; le reste (viz, cache) est ignore.
+
+```powershell
+graphify query "<question>"          # sous-graphe scope pour une question
+graphify explain "<symbole>"         # un noeud + ses voisins
+graphify affected "src/features.ts"  # rayon d'impact d'un changement
+graphify update .                    # rafraichit le graphe apres modif (AST, gratuit)
+```
+
+**Sur un nouveau poste / en CI** (les hooks git et la config Claude Code sont *par
+clone*, pas versionnes) :
+
+```powershell
+uv tool install "graphifyy[gemini]"
+graphify claude install --project    # skill + CLAUDE.md + hook PreToolUse
+graphify hook install                # hooks git post-commit / post-checkout
+```
+
+Reconstruction complete avec la couche semantique (docs + aretes inferees,
+necessite `GEMINI_API_KEY`) :
+
+```powershell
+graphify extract . --backend gemini --model gemini-3.6-flash
+graphify label . --backend gemini --model gemini-3.6-flash
+```
+
+`GRAPHIFY_SKIP_HOOK=1 git commit ...` desactive le rebuild automatique pour un commit.
+
 ## Architecture (le "pourquoi")
 
 Donnees et logique sont **strictement separees**. Chaque brique = une table qui
