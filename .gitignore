@@ -24,3 +24,14 @@ npm-debug.log*
 
 # Sauvegarde d'un .git corrompu (2026-08-31) - a supprimer via l'Explorateur Windows
 .git-broken/
+
+# Reglages Claude Code personnels (permissions locales)
+.claude/settings.local.json
+
+# Graphify - graphe de code : seuls graph.json + GRAPH_REPORT.md sont versionnes
+# (le reste est regenerable / local : viz, cache AST, cost.json, metadonnees).
+graphify-out/*
+!graphify-out/graph.json
+!graphify-out/GRAPH_REPORT.md
+.graphify_analysis.json
+.graphify_labels.json
