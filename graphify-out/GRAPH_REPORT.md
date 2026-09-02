@@ -4,49 +4,42 @@
 - cluster-only mode — file stats not available
 
 ## Summary
-- 735 nodes · 1959 edges · 35 communities
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 27 edges (avg confidence: 0.85)
-- Token cost: 0 input · 0 output
+- 746 nodes · 1970 edges · 28 communities (24 shown, 2 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 29 edges (avg confidence: 0.86)
+- Token cost: 1,088 input · 327 output
 
 ## Graph Freshness
-- Built from commit: `64629fb8`
+- Built from commit: `17f1157d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- server.ts
-- ClientApp.tsx
-- src/routes.ts
-- scripts
-- db.ts
-- src/catalog.ts
-- index.ts
-- src/orders.ts
-- referral.ts
-- shop.ts
-- web/src/types.ts
-- web/package.json
-- checkout.ts
-- compilerOptions
-- confirmDialog
-- src/features.ts
-- views.ts
-- compilerOptions
-- src/Catalog.tsx
-- alertDialog
-- scenes/support.ts
-- orderFlow.ts
-- src/api.ts
-- OrderDetail.tsx
-- client.mts
-- journee.mts
-- loyalty.ts
-- admin.ts
-- api/orders.ts
-- telegram.ts
-- reliability.ts
-- Catalog
-- client-preview.mts
+- Shop and Cart Routing
+- Order and Route Management
+- Telegram Bot Features
+- Customer Loyalty and Referrals
+- Client Checkout and Catalog UI
+- Authentication and Admin Middleware
+- Catalog CRUD API
+- Project Development Dependencies
+- Admin Dashboard Web Components
+- Package Dependencies and Scripts
+- Integration and Smoke Tests
+- Frontend TypeScript Configuration
+- Admin UI Actions and State
+- Backend TypeScript Configuration
+- Product and Catalog Editors
+- Order Detail and Feature Context
+- Delivery Route Management UI
+- Telegram Mini App Entrypoints
+- Bot Client and Server API
+- Bot Daily Workflow Simulation
+- Driver and Route Assignment UI
+- Project Documentation and Architecture
+- Catalog State Management
+- Client Preview Environment
+- Mini App UI Rendering
+- Scripts Documentation
 
 ## God Nodes (most connected - your core abstractions)
 1. `alertDialog()` - 27 edges
@@ -54,179 +47,147 @@
 3. `shopRouter()` - 21 edges
 4. `requireAdmin()` - 20 edges
 5. `features` - 19 edges
-6. `routesRouter()` - 18 edges
-7. `safeSend()` - 18 edges
-8. `getOrder()` - 18 edges
+6. `getOrder()` - 18 edges
+7. `routesRouter()` - 18 edges
+8. `safeSend()` - 18 edges
 9. `scripts` - 18 edges
 10. `esc()` - 17 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `main()` --indirect_call--> `localDate()`  [INFERRED]
-  scripts/smoke.mts → web/src/types.ts
-- `main()` --calls--> `upsertCustomer()`  [EXTRACTED]
-  scripts/smoke.mts → src/customers.ts
-- `main()` --calls--> `createOrder()`  [EXTRACTED]
-  scripts/smoke.mts → src/orders.ts
 - `load()` --indirect_call--> `userId()`  [INFERRED]
   web/src/CustomerDetail.tsx → src/context.ts
 - `patch()` --indirect_call--> `userId()`  [INFERRED]
   web/src/CustomerDetail.tsx → src/context.ts
+- `main()` --indirect_call--> `localDate()`  [INFERRED]
+  scripts/smoke.mts → web/src/types.ts
+- `shopRouter()` --indirect_call--> `requireUser()`  [INFERRED]
+  src/api/shop.ts → src/api/auth.ts
+- `ordersRouter()` --indirect_call--> `requireAdmin()`  [INFERRED]
+  src/api/orders.ts → src/api/auth.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (35 total, 0 thin omitted)
+## Hyperedges (group relationships)
+- **Documentation Principale du Projet** — docs_cadrage_md, docs_avancement_md, docs_coeur_et_modules_md, docs_feuille_de_route_md, docs_mini_app_client_md, docs_deploiement_md [EXTRACTED 1.00]
 
-### Community 0 - "server.ts"
-Cohesion: 0.10
-Nodes (38): Express, isAdminUser(), readInitData(), Request, requireAdmin(), requireUser(), TgUser, verifyInitData() (+30 more)
+## Communities (28 total, 2 thin omitted)
 
-### Community 1 - "ClientApp.tsx"
+### Community 0 - "Shop and Cart Routing"
+Cohesion: 0.05
+Nodes (86): cartDto(), clientConfig(), shopRouter(), CALLBACK_PATTERN, CB, parseCallback(), ParsedCallback, addToCart() (+78 more)
+
+### Community 1 - "Order and Route Management"
+Cohesion: 0.06
+Nodes (83): now, ordersRouter(), toDto(), parseCapacity(), parseDriverId(), routesRouter(), resolveMenuItems(), Driver (+75 more)
+
+### Community 2 - "Telegram Bot Features"
+Cohesion: 0.06
+Nodes (52): sent, telegram, isAdmin(), registerAdmin(), purgeCarts(), activeRoutesStmt(), DashboardData, getOverduePendingIds() (+44 more)
+
+### Community 3 - "Customer Loyalty and Referrals"
+Cohesion: 0.07
+Nodes (42): sent, telegram, customersRouter(), Customer, CustomerRow, CustomerSummary, getCustomer(), listCustomers() (+34 more)
+
+### Community 4 - "Client Checkout and Catalog UI"
 Cohesion: 0.13
 Nodes (35): request(), shop, Cart(), Props, Catalog(), Props, Checkout(), Props (+27 more)
 
-### Community 2 - "src/routes.ts"
+### Community 5 - "Authentication and Admin Middleware"
 Cohesion: 0.12
-Nodes (44): parseCapacity(), parseDriverId(), routesRouter(), Driver, driverExists(), detachRouteOrders(), getOrdersByRoute(), moveOrderInRoute() (+36 more)
+Nodes (34): Express, isAdminUser(), readInitData(), Request, requireAdmin(), requireUser(), TgUser, verifyInitData() (+26 more)
 
-### Community 3 - "scripts"
-Cohesion: 0.05
-Nodes (41): better-sqlite3, dotenv, express, dependencies, better-sqlite3, dotenv, express, telegraf (+33 more)
+### Community 6 - "Catalog CRUD API"
+Cohesion: 0.14
+Nodes (32): catalogRouter(), resolveImage(), Category, createCategory(), createProduct(), createVariant(), deleteCategory(), deleteProduct() (+24 more)
 
-### Community 4 - "db.ts"
-Cohesion: 0.07
-Nodes (27): now, admin, ADMIN_ID, call(), check(), env, main(), stranger (+19 more)
+### Community 7 - "Project Development Dependencies"
+Cohesion: 0.06
+Nodes (34): devDependencies, tsx, @types/better-sqlite3, @types/express, @types/node, typescript, typescript, react (+26 more)
 
-### Community 5 - "src/catalog.ts"
-Cohesion: 0.15
-Nodes (31): catalogRouter(), resolveImage(), Category, createCategory(), createProduct(), createVariant(), deleteCategory(), deleteProduct() (+23 more)
+### Community 8 - "Admin Dashboard Web Components"
+Cohesion: 0.12
+Nodes (26): api, Props, Dashboard(), Props, Props, Props, Addable, Props (+18 more)
 
-### Community 6 - "index.ts"
-Cohesion: 0.10
-Nodes (23): CALLBACK_PATTERN, CB, parseCallback(), ParsedCallback, seedCatalogIfEmpty(), BotContext, BotSession, CheckoutState (+15 more)
+### Community 9 - "Package Dependencies and Scripts"
+Cohesion: 0.06
+Nodes (32): better-sqlite3, dotenv, express, dependencies, better-sqlite3, dotenv, express, telegraf (+24 more)
 
-### Community 7 - "src/orders.ts"
-Cohesion: 0.08
-Nodes (27): assignRoute, clearRouteFromOrders, countByStatus, EDITABLE_IDS, getAssignableOrders(), getLastOrder(), getOrdersByStatus(), hydrate() (+19 more)
+### Community 10 - "Integration and Smoke Tests"
+Cohesion: 0.11
+Nodes (19): admin, ADMIN_ID, call(), check(), env, main(), stranger, today (+11 more)
 
-### Community 8 - "referral.ts"
-Cohesion: 0.15
-Nodes (21): customersRouter(), Customer, CustomerRow, CustomerSummary, getCustomer(), listCustomers(), q, toCustomer() (+13 more)
-
-### Community 9 - "shop.ts"
-Cohesion: 0.19
-Nodes (24): cartDto(), clientConfig(), shopRouter(), addToCart(), cartCount(), CartRow, cartTotal(), clearCart() (+16 more)
-
-### Community 10 - "web/src/types.ts"
-Cohesion: 0.13
-Nodes (22): Tab, Customers(), Dashboard(), Props, FeaturesContext, NON_TERMINAL, errorMessage(), Filter (+14 more)
-
-### Community 11 - "web/package.json"
-Cohesion: 0.08
-Nodes (25): typescript, typescript, react, react-dom, @types/react, @types/react-dom, vite, @vitejs/plugin-react (+17 more)
-
-### Community 12 - "checkout.ts"
-Cohesion: 0.15
-Nodes (23): Slot, askAddress(), CHECKOUT_SCENE_ID, checkoutScene, collectAddress, collectNote, collectPhone, collectSlot (+15 more)
-
-### Community 13 - "compilerOptions"
+### Community 11 - "Frontend TypeScript Configuration"
 Cohesion: 0.09
 Nodes (21): DOM, DOM.Iterable, vite.config.ts, compilerOptions, esModuleInterop, isolatedModules, jsx, lib (+13 more)
 
-### Community 14 - "confirmDialog"
-Cohesion: 0.17
-Nodes (21): CustomerDetail(), useFeatures(), useFlow(), OrderDetail(), apply(), onStatusClick(), send(), Props (+13 more)
+### Community 12 - "Admin UI Actions and State"
+Cohesion: 0.15
+Nodes (17): CustomerDetail(), load(), patch(), Customers(), Drivers(), add(), run(), MessageTemplates() (+9 more)
 
-### Community 15 - "src/features.ts"
-Cohesion: 0.13
-Nodes (14): sent, telegram, boutiqueDemo, ClientFeatures, DELIVERY_FLOW, OrderFlowConfig, OrderStage, PICKUP_FLOW (+6 more)
-
-### Community 16 - "views.ts"
-Cohesion: 0.23
-Nodes (18): lineKey(), getMenu(), imagePath(), cartView(), categoriesView(), categoryView(), chunk(), contactView() (+10 more)
-
-### Community 17 - "compilerOptions"
+### Community 13 - "Backend TypeScript Configuration"
 Cohesion: 0.12
 Nodes (16): compilerOptions, esModuleInterop, forceConsistentCasingInFileNames, lib, module, moduleResolution, noUncheckedIndexedAccess, outDir (+8 more)
 
-### Community 18 - "src/Catalog.tsx"
+### Community 14 - "Product and Catalog Editors"
 Cohesion: 0.18
 Nodes (12): Editing, fileToResizedDataUrl(), ProductForm(), pickImage(), ProductValues, Props, ProductVariants(), run() (+4 more)
 
-### Community 19 - "alertDialog"
-Cohesion: 0.27
-Nodes (13): Drivers(), add(), run(), Props, DriverSelect(), Props, Props, RouteTemplates() (+5 more)
+### Community 15 - "Order Detail and Feature Context"
+Cohesion: 0.24
+Nodes (14): FeaturesContext, NON_TERMINAL, useFeatures(), useFlow(), OrderDetail(), apply(), onStatusClick(), errorMessage() (+6 more)
 
-### Community 20 - "scenes/support.ts"
-Cohesion: 0.16
-Nodes (9): config, SUPPORT_REPLY_SCENE_ID, SUPPORT_SCENE_ID, supportReplyScene, supportScene, ClientIdentity, relayAdminReply(), relayClientMessage() (+1 more)
-
-### Community 21 - "orderFlow.ts"
-Cohesion: 0.22
-Nodes (15): alertAdmins(), awardLoyalty(), buildTransitions(), customerFlag(), escHtml(), loyaltyFlag(), notifyNewOrder(), renderOrderText() (+7 more)
-
-### Community 22 - "src/api.ts"
+### Community 16 - "Delivery Route Management UI"
 Cohesion: 0.23
-Nodes (11): api, Props, Props, Customer, CustomerSummary, LoyaltyStatus, MessageTemplate, ReferralInfo (+3 more)
+Nodes (14): Props, RouteOrderRow(), markDelivered(), reportProblem(), Routes(), createRoute(), finish(), guard() (+6 more)
 
-### Community 23 - "OrderDetail.tsx"
-Cohesion: 0.18
-Nodes (11): MessageTemplates(), load(), run(), Props, Addable, OrderEdit(), save(), Props (+3 more)
+### Community 17 - "Telegram Mini App Entrypoints"
+Cohesion: 0.21
+Nodes (10): AdminApp(), Tab, App(), State, initData, initTelegram(), tg, TgWebApp (+2 more)
 
-### Community 24 - "client.mts"
+### Community 18 - "Bot Client and Server API"
 Cohesion: 0.17
 Nodes (8): AUTH, env, flat, listener, menu, sent, server, telegram
 
-### Community 25 - "journee.mts"
+### Community 19 - "Bot Daily Workflow Simulation"
 Cohesion: 0.21
 Nodes (8): check(), log(), runRoute(), sent, Sim, telegram, TODAY, ItemRef
 
-### Community 26 - "loyalty.ts"
-Cohesion: 0.27
-Nodes (8): sent, telegram, awardForOrder(), buildStatements(), getPoints(), LoyaltyStatus, q(), redeemReward()
+### Community 20 - "Driver and Route Assignment UI"
+Cohesion: 0.44
+Nodes (6): Props, DriverSelect(), Props, Props, Driver, RouteTemplate
 
-### Community 27 - "admin.ts"
-Cohesion: 0.38
-Nodes (10): isAdmin(), registerAdmin(), changeStatus(), orderKeyboard(), getOpenOrders(), getStatusCounts(), updateOrderStatus(), orderStages() (+2 more)
+### Community 21 - "Project Documentation and Architecture"
+Cohesion: 0.31
+Nodes (8): Journal d'avancement, Document de cadrage, Architecture Cœur + Modules, Cœur commun + modules, Mise en production (Oracle Cloud), Feuille de route évolutions & refactoring, Mini App Client & Panier Partagé, Mini App client — plan du chantier
 
-### Community 28 - "api/orders.ts"
-Cohesion: 0.38
-Nodes (10): ordersRouter(), toDto(), resolveMenuItems(), getReliability(), nextStatuses(), EDITABLE_STATUSES, getOrder(), getRecentOrders() (+2 more)
-
-### Community 29 - "telegram.ts"
-Cohesion: 0.29
-Nodes (7): AdminApp(), App(), State, initData, initTelegram(), TgWebApp, Window
-
-### Community 30 - "reliability.ts"
-Cohesion: 0.25
-Nodes (8): listReliability(), OPEN_IDS, openPlaceholders, q, Reliability, ReliabilitySummary, withRate(), openStatusIds()
-
-### Community 31 - "Catalog"
+### Community 22 - "Catalog State Management"
 Cohesion: 0.52
 Nodes (7): Catalog(), addCategory(), guard(), removeCategory(), removeProduct(), saveProduct(), toggleAvailable()
 
-### Community 32 - "client-preview.mts"
+### Community 23 - "Client Preview Environment"
 Cohesion: 0.40
 Nodes (3): env, ID, index
 
 ## Knowledge Gaps
-- **202 isolated node(s):** `Request`, `TgUser`, `DriverRow`, `Screen`, `Props` (+197 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 239 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **208 isolated node(s):** `ParsedCallback`, `WizardData`, `CartRow`, `CreateClientOrderInput`, `CreateClientOrderResult` (+203 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 245 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `userId()` connect `index.ts` to `admin.ts`, `checkout.ts`, `scenes/support.ts`?**
-  _High betweenness centrality (0.227) - this node is a cross-community bridge._
-- **Why does `patch()` connect `index.ts` to `alertDialog`, `confirmDialog`?**
-  _High betweenness centrality (0.194) - this node is a cross-community bridge._
-- **Why does `alertDialog()` connect `alertDialog` to `ClientApp.tsx`, `index.ts`, `confirmDialog`, `src/Catalog.tsx`, `src/api.ts`, `OrderDetail.tsx`, `telegram.ts`, `Catalog`?**
-  _High betweenness centrality (0.187) - this node is a cross-community bridge._
+- **Why does `userId()` connect `Shop and Cart Routing` to `Telegram Bot Features`, `Admin UI Actions and State`?**
+  _High betweenness centrality (0.220) - this node is a cross-community bridge._
+- **Why does `patch()` connect `Admin UI Actions and State` to `Shop and Cart Routing`?**
+  _High betweenness centrality (0.188) - this node is a cross-community bridge._
+- **Why does `alertDialog()` connect `Admin UI Actions and State` to `Client Checkout and Catalog UI`, `Admin Dashboard Web Components`, `Product and Catalog Editors`, `Order Detail and Feature Context`, `Delivery Route Management UI`, `Telegram Mini App Entrypoints`, `Driver and Route Assignment UI`, `Catalog State Management`?**
+  _High betweenness centrality (0.182) - this node is a cross-community bridge._
 - **Are the 8 inferred relationships involving `requireAdmin()` (e.g. with `catalogRouter()` and `customersRouter()`) actually correct?**
   _`requireAdmin()` has 8 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `Request`, `TgUser`, `DriverRow` to the rest of the system?**
-  _202 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `server.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.10175763182238667 - nodes in this community are weakly interconnected._
-- **Should `ClientApp.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.1267345050878816 - nodes in this community are weakly interconnected._
+- **What connects `ParsedCallback`, `WizardData`, `CartRow` to the rest of the system?**
+  _208 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `Shop and Cart Routing` be split into smaller, more focused modules?**
+  _Cohesion score 0.0547022932884494 - nodes in this community are weakly interconnected._
+- **Should `Order and Route Management` be split into smaller, more focused modules?**
+  _Cohesion score 0.055921855921855924 - nodes in this community are weakly interconnected._
