@@ -4,9 +4,9 @@
 Pour le "pourquoi" des choix : [`cadrage.md`](./cadrage.md) (cadrage initial) et
 [`coeur-et-modules.md`](./coeur-et-modules.md) (direction : cœur générique + modules).
 
-> Dernière mise à jour : 2026-09-01 — **Mini App client livrée** (vitrine catalogue/panier/checkout,
-> panier partagé bot ↔ Mini App) + **mise en production** sur Oracle Cloud (cf.
-> [`deploiement.md`](./deploiement.md)).
+> Dernière mise à jour : 2026-09-02 — **Mini App client livrée** + **mise en production**
+> sur Oracle Cloud (cf. [`deploiement.md`](./deploiement.md)) + intégration **Graphify**
+> (carte du code interrogeable, cf. « Environnement de développement »).
 
 **Modularisation « cœur + modules » : terminée** (6 étapes, section dédiée plus
 bas) — voir [`coeur-et-modules.md`](./coeur-et-modules.md). Le bot est piloté par
@@ -307,6 +307,27 @@ Reste possible : `POST /api/shop/orders/:id/items` (ajout à une commande en cou
 - `npm install` échouait sous le bac à sable de Claude Code (EPERM sur `E:\`) — les
   commandes npm/node ont été lancées hors sandbox.
 - Réseau vers npmjs très lent (l'install de `web/` a pris ~24 min).
+- **uv** (astral) installé via `winget install astral-sh.uv --skip-dependencies`
+  (le VC++ Redist était déjà présent).
+
+### Graphify — carte du code (2026-09-02)
+
+[Graphify](https://github.com/Graphify-Labs/graphify) (`graphifyy` 0.9.53, `uv tool`)
+maintient un graphe de connaissance interrogeable dans `graphify-out/`
+(`graph.json` + `GRAPH_REPORT.md` versionnés). Cf. section README dédiée.
+
+- Installé project-scoped : skill `.claude/skills/graphify/`, section `CLAUDE.md`,
+  hook `PreToolUse` **non-strict** (nudge « fais `graphify query` avant de grep »),
+  hooks git `post-commit`/`post-checkout` (rebuild AST en arrière-plan).
+- Graphe : 810 nœuds / 40 communautés, passe sémantique via **Gemini
+  `gemini-3.6-flash`** (`GEMINI_API_KEY`, coût total ~0,05 $).
+- **Limites constatées** : les `docs/` sont indexés mais en nœuds *concept*
+  déconnectés du code ; pathfinding fichier↔fichier faible ; le rebuild auto du
+  hook est **AST-only** → relancer `graphify extract . --backend gemini` à la main
+  pour rafraîchir la couche sémantique. Les requêtes au niveau *symbole*
+  (`explain`, `affected`) sont fiables.
+- Onboarding autre poste / CI : les hooks et la config Claude Code sont *par clone*
+  → `graphify claude install --project` + `graphify hook install` à relancer.
 
 ---
 
